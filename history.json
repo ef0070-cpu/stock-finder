@@ -1,0 +1,90 @@
+{
+  "2026-08-12": {
+    "results": {
+      "005930": {
+        "market": "kr",
+        "price": 255500.0,
+        "change_pct": 6.68,
+        "rsi": 46.4,
+        "ma5": 237300.0,
+        "ma20": 244075.0,
+        "macd": -12466.1,
+        "macd_signal": -15746.98,
+        "score": 0,
+        "opinion": "보유",
+        "comment": "RSI 46.4 중립, 데드크로스, MACD 상승전환 → 보유 우위",
+        "name": "삼성전자"
+      },
+      "000660": {
+        "market": "kr",
+        "price": 1506000.0,
+        "change_pct": 5.68,
+        "rsi": 37.8,
+        "ma5": 1453600.0,
+        "ma20": 1645950.0,
+        "macd": -173457.14,
+        "macd_signal": -174358.17,
+        "score": 0,
+        "opinion": "보유",
+        "comment": "RSI 37.8 중립, 데드크로스, MACD 상승전환 → 보유 우위",
+        "name": "SK하이닉스"
+      },
+      "145720": {
+        "market": "kr",
+        "price": 41500.0,
+        "change_pct": -5.36,
+        "rsi": 59.2,
+        "ma5": 42010.0,
+        "ma20": 39450.0,
+        "macd": 267.3,
+        "macd_signal": -423.13,
+        "score": 2,
+        "opinion": "매수",
+        "comment": "RSI 59.2 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+        "name": "덴티움"
+      },
+      "AAPL": {
+        "market": "us",
+        "price": 304.91,
+        "change_pct": -1.09,
+        "rsi": 36.6,
+        "ma5": 309.8,
+        "ma20": 322.2,
+        "macd": -0.79,
+        "macd_signal": 2.46,
+        "score": -2,
+        "opinion": "매도",
+        "comment": "RSI 36.6 중립, 데드크로스, MACD 하락전환 → 매도 우위",
+        "name": "Apple Inc."
+      },
+      "MSFT": {
+        "market": "us",
+        "price": 503.81,
+        "change_pct": -0.44,
+        "rsi": 87.4,
+        "ma5": 499.4,
+        "ma20": 435.5,
+        "macd": 30.31,
+        "macd_signal": 21.19,
+        "score": 1,
+        "opinion": "보유",
+        "comment": "RSI 87.4 과매수, 골든크로스, MACD 상승전환 → 보유 우위",
+        "name": "Microsoft Corporation"
+      },
+      "PLTR": {
+        "market": "us",
+        "price": 174.94,
+        "change_pct": -0.17,
+        "rsi": 79.2,
+        "ma5": 167.3,
+        "ma20": 139.4,
+        "macd": 10.58,
+        "macd_signal": 5.12,
+        "score": 1,
+        "opinion": "보유",
+        "comment": "RSI 79.2 과매수, 골든크로스, MACD 상승전환 → 보유 우위",
+        "name": "Palantir Technologies Inc."
+      }
+    }
+  }
+}
