@@ -68,7 +68,8 @@
   th:first-child, td:first-child { text-align: left; }
   th { background: transparent; color: var(--text-faint); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
   tbody tr:hover { background: var(--bg); }
-  .opinion { font-weight: 700; padding: 3px 10px; border-radius: 999px; font-size: 12px; display: inline-block; white-space: nowrap; }
+  .opinion { font-weight: 700; padding: 3px 10px; border-radius: 999px; font-size: 12px; display: inline-block; white-space: nowrap; cursor: pointer; transition: transform 0.1s ease; }
+  .opinion:hover { transform: scale(1.05); box-shadow: var(--shadow-sm); }
   #holdingsTable td, #holdingsTable th { white-space: nowrap; }
   #holdingsTable td:nth-child(2), #holdingsTable td:nth-child(12), #holdingsTable td.no-data { white-space: normal; }
   .opinion-buy { background: var(--buy-soft); color: var(--buy); }
@@ -250,6 +251,16 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="opinionModal">
+    <div class="modal-box" style="width:460px">
+      <div class="modal-header">
+        <span id="opinionModalTitle"></span>
+        <button id="opinionModalCloseBtn">닫기</button>
+      </div>
+      <div id="opinionModalBody"></div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="finderModal">
     <div class="modal-box">
       <div class="modal-header">
@@ -354,10 +365,12 @@
       }
     }
 
+    function toKrw(market, price) {
+      return market === "kr" ? price : price * usdKrwRate;
+    }
     function formatPrice(market, price) {
       if (price == null) return "—";
-      const krw = market === "kr" ? price : price * usdKrwRate;
-      return "₩" + Math.round(krw).toLocaleString("ko-KR");
+      return "₩" + Math.round(toKrw(market, price)).toLocaleString("ko-KR");
     }
 
     // ── 종목 파인더(버핏 검토) 전용 헬퍼 — candidates.js의 warren_score(0~10)/buffett_review 사용
@@ -491,6 +504,65 @@
       if (e.target.id === "buffettModal") document.getElementById("buffettModal").classList.remove("active");
     });
 
+    // ── 초보자용 "왜 이 의견인가요?" 설명 팝업 (보유종목 의견 배지 클릭 시) ──
+    function beginnerRSI(rsi) {
+      if (rsi < 30) return `RSI ${rsi} — 30 밑이면 "과매도"예요. 많이 떨어져서 반등 가능성이 있는 구간이라는 뜻이에요.`;
+      if (rsi > 70) return `RSI ${rsi} — 70 위면 "과매수"예요. 많이 올라서 조정(하락)이 나올 수 있는 구간이라는 뜻이에요.`;
+      return `RSI ${rsi} — 30~70 사이라 "중립"이에요. 딱히 많이 오르지도 떨어지지도 않은 상태예요.`;
+    }
+    function beginnerMA(ma5, ma20) {
+      if (ma5 > ma20) return `5일 평균가(${ma5})가 20일 평균가(${ma20})보다 높아요 — "골든크로스", 단기 상승 흐름 신호예요.`;
+      return `5일 평균가(${ma5})가 20일 평균가(${ma20})보다 낮아요 — "데드크로스", 단기 하락 흐름 신호예요.`;
+    }
+    function beginnerMACD(macd, signal) {
+      if (macd > signal) return `MACD선(${macd})이 시그널선(${signal})보다 위예요 — 상승 쪽으로 전환되는 신호예요.`;
+      return `MACD선(${macd})이 시그널선(${signal})보다 아래예요 — 하락 쪽으로 전환되는 신호예요.`;
+    }
+
+    function openOpinionModal(name, ticker, h, r, lv, displayOpinion) {
+      document.getElementById("opinionModalTitle").textContent = `${name} (${ticker}) — 의견 설명`;
+      const overridden = displayOpinion !== r.opinion;
+      let html = `<div class="buffett-conclusion">${displayOpinion}</div>`;
+
+      if (overridden) {
+        const isStop = displayOpinion === "매도의견";
+        html += `
+          <div class="buffett-section">
+            <div class="buffett-section-title">왜 ${displayOpinion}인가요?</div>
+            <p style="font-size:13px;color:var(--text-muted);line-height:1.5">
+              매입가 ${formatPrice(h.market, h.buyPrice)}에 사셨는데 현재가 ${formatPrice(h.market, r.price)}는
+              ${isStop
+                ? `손절 기준선 ${formatPrice(h.market, lv.stopLoss)}(매입가 대비 -8%)보다 낮아요.`
+                : `목표가 ${formatPrice(h.market, lv.target)}(매입가 대비 +15%)보다 높아요.`}
+              아래 기술적 지표와 무관하게, <b>미리 정해둔 리스크 관리 기준에 닿았다는 뜻</b>이라 이 신호를 우선 보여드려요.
+            </p>
+          </div>`;
+      }
+
+      html += `
+        <div class="buffett-section">
+          <div class="buffett-section-title">기술적 지표는 어떤가요? (참고용)</div>
+          <ul class="buffett-list">
+            <li>${beginnerRSI(r.rsi)}</li>
+            <li>${beginnerMA(r.ma5, r.ma20)}</li>
+            <li>${beginnerMACD(r.macd, r.macd_signal)}</li>
+          </ul>
+          <p style="font-size:13px;color:var(--text-muted);margin-top:10px;line-height:1.5">
+            이 3개 신호를 하나씩 점수로 매겨(좋으면 +1점, 나쁘면 -1점) 합산한 게 <b>${r.score}점</b>이고,
+            <b>+2점 이상이면 매수, -2점 이하면 매도, 그 사이면 보유</b>로 판정해요. 지금 기술적 판정은 "${r.opinion}"이에요.
+          </p>
+        </div>`;
+
+      document.getElementById("opinionModalBody").innerHTML = html;
+      document.getElementById("opinionModal").classList.add("active");
+    }
+    document.getElementById("opinionModalCloseBtn").addEventListener("click", () => {
+      document.getElementById("opinionModal").classList.remove("active");
+    });
+    document.getElementById("opinionModal").addEventListener("click", (e) => {
+      if (e.target.id === "opinionModal") document.getElementById("opinionModal").classList.remove("active");
+    });
+
     function renderHoldingsTab() {
       const tbody = document.querySelector("#holdingsTable tbody");
       tbody.innerHTML = "";
@@ -555,6 +627,9 @@
             <td title="매입가 대비 +15% - 현재가가 이 위로 오면 '익절의견'으로 표시됨">${formatPrice(h.market, lv.target)}</td>
             <td style="text-align:left">${commentText}</td>
             <td>${actionBtns}</td>`;
+          tr.querySelector(".opinion").addEventListener("click", () => {
+            openOpinionModal(name, h.ticker, h, r, lv, displayOpinion);
+          });
         }
         tbody.appendChild(tr);
       });
@@ -576,8 +651,8 @@
           const h = holdings[idx];
           document.getElementById("hTicker").value = h.ticker;
           document.getElementById("hMarket").value = h.market;
-          updateBuyPriceUnit();
-          document.getElementById("hBuyPrice").value = h.buyPrice;
+          // 저장값은 시장 원래 통화(해외=달러) 그대로라, 입력창엔 원화로 환산해서 보여준다.
+          document.getElementById("hBuyPrice").value = Math.round(toKrw(h.market, h.buyPrice));
           document.getElementById("hQuantity").value = h.quantity;
           editingIndex = idx;
           document.getElementById("hAddBtn").textContent = "수정 완료";
@@ -735,8 +810,7 @@
           document.querySelector('.tab-btn[data-tab="holdings"]').click();
           document.getElementById("hTicker").value = c.ticker;
           document.getElementById("hMarket").value = c.market;
-          updateBuyPriceUnit();
-          document.getElementById("hBuyPrice").value = c.price;
+          document.getElementById("hBuyPrice").value = Math.round(toKrw(c.market, c.price));
           document.getElementById("hQuantity").value = "";
           document.getElementById("hQuantity").focus();
         });
@@ -781,22 +855,15 @@
       document.getElementById("hQuantity").value = "";
     }
 
-    // 해외 선택 시 매입가를 달러로 기입하도록 안내 — 실제 저장값 단위는 그대로(원 그대로 저장,
-    // 표시만 안내), 시세 비교는 어차피 같은 시장의 현재가(r.price)와 비교하므로 단위만 맞으면 됨
-    function updateBuyPriceUnit() {
-      const market = document.getElementById("hMarket").value;
-      document.getElementById("hBuyPrice").placeholder = market === "us" ? "매입가 ($)" : "매입가 (원)";
-    }
-    document.getElementById("hMarket").addEventListener("change", updateBuyPriceUnit);
 
     document.getElementById("hAddBtn").addEventListener("click", () => {
       const rawInput = document.getElementById("hTicker").value.trim();
       const ticker = resolveTicker(rawInput);
       const market = document.getElementById("hMarket").value;
-      const buyPrice = parseFloat(document.getElementById("hBuyPrice").value);
+      const buyPriceKrwInput = parseFloat(document.getElementById("hBuyPrice").value);
       const quantity = parseFloat(document.getElementById("hQuantity").value);
 
-      if (!ticker || isNaN(buyPrice) || isNaN(quantity)) {
+      if (!ticker || isNaN(buyPriceKrwInput) || isNaN(quantity)) {
         alert("티커, 매입가, 수량을 모두 입력하세요.");
         return;
       }
@@ -805,6 +872,9 @@
         alert(`"${rawInput}"을(를) 종목으로 인식할 수 없습니다. 정확한 티커(예: 005930, AAPL)를 입력하거나 목록에서 종목명을 선택하세요.`);
         return;
       }
+      // 입력창은 항상 원화 기준 — 저장은 기존처럼 시장 원래 통화(해외=달러)로 되돌려서
+      // 넣는다. 다른 계산(평가손익 등)이 전부 "저장값=원래 통화"를 전제로 하고 있어서다.
+      const buyPrice = market === "us" ? buyPriceKrwInput / usdKrwRate : buyPriceKrwInput;
 
       const holdings = loadHoldings();
       if (editingIndex !== null) {
@@ -855,7 +925,6 @@
     renderUpdatedAt();
     populateTickerSuggestions();
     renderFinderCalendar();
-    updateBuyPriceUnit();
     loadUsdKrwRate().then(renderHoldingsTab);
   </script>
 </body>
