@@ -71,7 +71,7 @@
   .opinion { font-weight: 700; padding: 3px 10px; border-radius: 999px; font-size: 12px; display: inline-block; white-space: nowrap; cursor: pointer; transition: transform 0.1s ease; }
   .opinion:hover { transform: scale(1.05); box-shadow: var(--shadow-sm); }
   #holdingsTable td, #holdingsTable th { white-space: nowrap; }
-  #holdingsTable td:nth-child(2), #holdingsTable td:nth-child(12), #holdingsTable td.no-data { white-space: normal; }
+  #holdingsTable td:nth-child(2), #holdingsTable td:nth-child(13), #holdingsTable td.no-data { white-space: normal; }
   .opinion-buy { background: var(--buy-soft); color: var(--buy); }
   .opinion-sell { background: var(--sell-soft); color: var(--sell); }
   .opinion-hold { background: var(--hold-soft); color: var(--hold); }
@@ -246,6 +246,11 @@
         <option value="kr">국내</option>
         <option value="us">해외</option>
       </select>
+      <select id="hBroker">
+        <option value="키움증권">키움증권</option>
+        <option value="카카오증권">카카오증권</option>
+        <option value="삼성증권">삼성증권</option>
+      </select>
       <input type="number" id="hBuyPrice" placeholder="매입가 (원)" step="0.01" />
       <input type="number" id="hQuantity" placeholder="수량" step="1" />
       <button id="hAddBtn">추가</button>
@@ -254,7 +259,7 @@
     <table id="holdingsTable">
       <thead>
         <tr>
-          <th>티커</th><th>종목명</th><th>매입가</th><th>수량</th><th>현재가</th>
+          <th>티커</th><th>종목명</th><th>증권사</th><th>매입가</th><th>수량</th><th>현재가</th>
           <th>평가손익</th><th>손익률</th><th>의견</th><th>매수추천가</th><th>손절가</th><th>목표가</th><th>코멘트</th><th></th>
         </tr>
       </thead>
@@ -719,7 +724,7 @@
       const holdings = loadHoldings();
 
       if (holdings.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="13" class="empty-msg">등록된 보유종목이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="14" class="empty-msg">등록된 보유종목이 없습니다.</td></tr>';
         return;
       }
 
@@ -732,24 +737,25 @@
             <button class="del-btn" data-idx="${idx}">삭제</button>`;
 
         const buyPriceKrw = formatPrice(h.market, h.buyPrice);
+        const brokerCell = `<td>${h.broker || "-"}</td>`;
 
         if (!r || r.error) {
           if (liveLoading.has(h.ticker)) {
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
+              <td>${h.ticker}</td><td>${name}</td>${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
               <td colspan="8" class="no-data">실시간 시세 조회 중...</td>
               <td>${actionBtns}</td>`;
           } else if (h.market === "us") {
             const reason = r ? r.error : "실시간 조회 대기 중";
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
+              <td>${h.ticker}</td><td>${name}</td>${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
               <td colspan="8" class="no-data">지표 없음 — ${reason}</td>
               <td>${actionBtns}</td>`;
             ensureLiveAnalysis(h.ticker, h.market);
           } else {
             const reason = r ? r.error : "tickers.json에 등록되지 않음";
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
+              <td>${h.ticker}</td><td>${name}</td>${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
               <td colspan="8" class="no-data">지표 없음 — ${reason}. tickers.json에 추가 후 재실행 필요</td>
               <td>${actionBtns}</td>`;
           }
@@ -768,7 +774,7 @@
             ? `매입가 대비 ${displayOpinion === "매도의견" ? "손절선(-8%) 도달" : "목표가(+15%) 도달"} · 기술적 지표는 참고: ${r.comment}`
             : r.comment;
           tr.innerHTML = `
-            <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td><td>${formatPrice(h.market, r.price)}</td>
+            <td>${h.ticker}</td><td>${name}</td>${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td><td>${formatPrice(h.market, r.price)}</td>
             <td class="${pnlClass}">${formatPrice(h.market, pnl)}</td>
             <td class="${pnlClass}">${pnlPct.toFixed(2)}%</td>
             <td><span class="opinion ${opinionClass(displayOpinion)}" title="매입가 대비 손절/목표가 도달 여부가 RSI·이평선·MACD 기술적 판정보다 우선 표시됩니다">${displayOpinion}</span></td>
@@ -801,6 +807,7 @@
           const h = holdings[idx];
           document.getElementById("hTicker").value = h.ticker;
           document.getElementById("hMarket").value = h.market;
+          document.getElementById("hBroker").value = h.broker || "키움증권";
           // 저장값은 시장 원래 통화(해외=달러) 그대로라, 입력창엔 원화로 환산해서 보여준다.
           document.getElementById("hBuyPrice").value = Math.round(toKrw(h.market, h.buyPrice));
           document.getElementById("hQuantity").value = h.quantity;
@@ -1001,6 +1008,7 @@
       document.getElementById("hAddBtn").textContent = "추가";
       document.getElementById("hCancelBtn").style.display = "none";
       document.getElementById("hTicker").value = "";
+      document.getElementById("hBroker").value = "키움증권";
       document.getElementById("hBuyPrice").value = "";
       document.getElementById("hQuantity").value = "";
     }
@@ -1010,6 +1018,7 @@
       const rawInput = document.getElementById("hTicker").value.trim();
       const ticker = resolveTicker(rawInput);
       const market = document.getElementById("hMarket").value;
+      const broker = document.getElementById("hBroker").value;
       const buyPriceKrwInput = parseFloat(document.getElementById("hBuyPrice").value);
       const quantity = parseFloat(document.getElementById("hQuantity").value);
 
@@ -1053,24 +1062,24 @@
         if (quantity <= 0) {
           holdings.splice(editingIndex, 1);
         } else if (keepOldBuyPrice) {
-          holdings[editingIndex] = { ticker, market, buyPrice: old.buyPrice, quantity };
+          holdings[editingIndex] = { ticker, market, broker, buyPrice: old.buyPrice, quantity };
         } else if (addedQty > 0) {
           // 추가매수: 입력한 "매입가"를 새로 사는 몫의 단가로 보고 기존 수량과 가중평균한다.
           // 매도가 현금을 늘리는 것과 대칭으로, 추가매수는 그만큼 현금에서 차감한다.
           const oldBuyPriceKrw = toKrw(old.market, old.buyPrice);
           const newAvgKrw = (oldBuyPriceKrw * old.quantity + buyPriceKrwInput * addedQty) / quantity;
           const newAvgNative = market === "us" ? newAvgKrw / usdKrwRate : newAvgKrw;
-          holdings[editingIndex] = { ticker, market, buyPrice: newAvgNative, quantity };
+          holdings[editingIndex] = { ticker, market, broker, buyPrice: newAvgNative, quantity };
           saveCash(loadCash() - buyPriceKrwInput * addedQty);
           alert(
             `${addedQty.toLocaleString("ko-KR")}주를 ${formatPrice("kr", buyPriceKrwInput)}에 추가매수 처리했습니다.\n` +
             `평균 매입단가가 ${formatPrice("kr", newAvgKrw)}(으)로 재계산됐고, 매수금액은 현금 잔고에서 차감됐습니다.`
           );
         } else {
-          holdings[editingIndex] = { ticker, market, buyPrice, quantity };
+          holdings[editingIndex] = { ticker, market, broker, buyPrice, quantity };
         }
       } else {
-        holdings.push({ ticker, market, buyPrice, quantity });
+        holdings.push({ ticker, market, broker, buyPrice, quantity });
         saveCash(loadCash() - buyPriceKrwInput * quantity);
       }
       saveHoldings(holdings);
