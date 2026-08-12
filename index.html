@@ -539,15 +539,21 @@
           // 같은 비율만큼 떨어져 있어 "근처에 왔는지" 판단이 성립하지 않는다.
           const lv = priceLevels(h.buyPrice);
           const displayOpinion = positionSignal(r.price, lv, r.opinion);
+          // 배지(손절/익절 신호)와 코멘트(기술적 지표)가 서로 다른 얘기를 할 수 있으므로
+          // — 예: 손절선은 넘었는데 RSI/MACD는 여전히 매수 우위 — 둘 다 보여준다.
+          // 손절/익절은 매입가 기준 사실(risk-management)이라 기술적 지표보다 우선한다.
+          const commentText = displayOpinion !== r.opinion
+            ? `매입가 대비 ${displayOpinion === "매도의견" ? "손절선(-8%) 도달" : "목표가(+15%) 도달"} · 기술적 지표는 참고: ${r.comment}`
+            : r.comment;
           tr.innerHTML = `
             <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td><td>${formatPrice(h.market, r.price)}</td>
             <td class="${pnlClass}">${formatPrice(h.market, pnl)}</td>
             <td class="${pnlClass}">${pnlPct.toFixed(2)}%</td>
-            <td><span class="opinion ${opinionClass(displayOpinion)}">${displayOpinion}</span></td>
+            <td><span class="opinion ${opinionClass(displayOpinion)}" title="매입가 대비 손절/목표가 도달 여부가 RSI·이평선·MACD 기술적 판정보다 우선 표시됩니다">${displayOpinion}</span></td>
             <td title="매입가 대비 -2%~0% 구간 - 참고용, 투자 조언 아님">${formatPrice(h.market, lv.buyLow)} ~ ${formatPrice(h.market, lv.buyHigh)}</td>
             <td title="매입가 대비 -8% - 현재가가 이 아래로 오면 '매도의견'으로 표시됨">${formatPrice(h.market, lv.stopLoss)}</td>
             <td title="매입가 대비 +15% - 현재가가 이 위로 오면 '익절의견'으로 표시됨">${formatPrice(h.market, lv.target)}</td>
-            <td style="text-align:left">${r.comment}</td>
+            <td style="text-align:left">${commentText}</td>
             <td>${actionBtns}</td>`;
         }
         tbody.appendChild(tr);
