@@ -183,7 +183,7 @@
   .buffett-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
   .buffett-list li { margin-bottom: 5px; }
 
-  .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .summary-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
   .summary-card {
     background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius-lg);
     padding: 16px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 6px;
@@ -584,7 +584,10 @@
         <div class="summary-card">
           <div class="summary-card-label">📈 종합 수익률</div>
           <div class="summary-card-value ${returnCls}">${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(2)}%</div>
-          ${totalRealizedPnl !== 0 ? `<div style="font-size:11px;color:var(--text-faint)">실현손익 ${formatPrice("kr", totalRealizedPnl)} 포함</div>` : ""}
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">🎯 실현손익</div>
+          <div class="summary-card-value ${totalRealizedPnl >= 0 ? "pnl-plus" : "pnl-minus"}">${formatPrice("kr", totalRealizedPnl)}</div>
         </div>`;
 
       document.getElementById("cashInput").addEventListener("change", (e) => {
@@ -1046,13 +1049,29 @@
             (r && !r.error ? "" : "\n(현재가를 못 가져와 매입가로 대체 계산했습니다.)")
           );
         }
+        const addedQty = quantity - old.quantity;
         if (quantity <= 0) {
           holdings.splice(editingIndex, 1);
+        } else if (keepOldBuyPrice) {
+          holdings[editingIndex] = { ticker, market, buyPrice: old.buyPrice, quantity };
+        } else if (addedQty > 0) {
+          // 추가매수: 입력한 "매입가"를 새로 사는 몫의 단가로 보고 기존 수량과 가중평균한다.
+          // 매도가 현금을 늘리는 것과 대칭으로, 추가매수는 그만큼 현금에서 차감한다.
+          const oldBuyPriceKrw = toKrw(old.market, old.buyPrice);
+          const newAvgKrw = (oldBuyPriceKrw * old.quantity + buyPriceKrwInput * addedQty) / quantity;
+          const newAvgNative = market === "us" ? newAvgKrw / usdKrwRate : newAvgKrw;
+          holdings[editingIndex] = { ticker, market, buyPrice: newAvgNative, quantity };
+          saveCash(loadCash() - buyPriceKrwInput * addedQty);
+          alert(
+            `${addedQty.toLocaleString("ko-KR")}주를 ${formatPrice("kr", buyPriceKrwInput)}에 추가매수 처리했습니다.\n` +
+            `평균 매입단가가 ${formatPrice("kr", newAvgKrw)}(으)로 재계산됐고, 매수금액은 현금 잔고에서 차감됐습니다.`
+          );
         } else {
-          holdings[editingIndex] = { ticker, market, buyPrice: keepOldBuyPrice ? old.buyPrice : buyPrice, quantity };
+          holdings[editingIndex] = { ticker, market, buyPrice, quantity };
         }
       } else {
         holdings.push({ ticker, market, buyPrice, quantity });
+        saveCash(loadCash() - buyPriceKrwInput * quantity);
       }
       saveHoldings(holdings);
       exitEditMode();
