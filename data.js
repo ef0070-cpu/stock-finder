@@ -1,5 +1,5 @@
 window.STOCK_DATA = {
-  "updated_at": "2026-08-12 06:32:15",
+  "updated_at": "2026-08-12 06:40:25",
   "results": {
     "005930": {
       "market": "kr",
