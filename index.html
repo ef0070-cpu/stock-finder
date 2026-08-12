@@ -40,17 +40,12 @@
   .modal-box { background: #fff; border-radius: 8px; padding: 16px; max-width: 95vw; max-height: 85vh; overflow: auto; }
   .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 20px; }
   .modal-header button { border: none; background: #eee; border-radius: 4px; cursor: pointer; padding: 4px 10px; }
-  .modal-footer { margin-top: 12px; }
-  .modal-note { color: #999; font-size: 12px; margin-left: 8px; }
   .add-form { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
   .add-form input { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
   .add-form select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
   .add-form button { padding: 6px 14px; border: none; background: #333; color: #fff; border-radius: 4px; cursor: pointer; }
   .del-btn { padding: 4px 10px; border: none; background: #eee; color: #c92a2a; border-radius: 4px; cursor: pointer; }
   .empty-msg { color: #999; padding: 20px 0; text-align: center; }
-  .modal-filters { display: flex; gap: 8px; margin-bottom: 10px; }
-  .modal-filters select { padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; }
-  .memo-input { width: 100%; box-sizing: border-box; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; }
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
   .stock-card { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
   .stock-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
@@ -67,6 +62,25 @@
   .stock-card-levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; border-top: 1px solid #f0f0f0; padding-top: 8px; text-align: center; font-size: 12px; }
   .stock-card-levels .label { color: #999; margin-bottom: 2px; }
   .stock-card-levels .value { font-weight: bold; color: #333; }
+  .stock-card-cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; border-top: 1px solid #f0f0f0; padding-top: 8px; }
+  .stock-card-badge.verdict-pass { background: #c92a2a; }
+  .stock-card-badge.verdict-wait { background: #e8a33d; }
+  .stock-card-badge.verdict-reject { background: #999; }
+  .stock-card-link { font-size: 12px; color: #1864ab; text-decoration: none; }
+  .stock-card-link:hover { text-decoration: underline; }
+  .stock-card-add-btn { padding: 6px 0; border: 1px solid #ccc; background: #fff; color: #555; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .finder-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .finder-filters .seg { display: flex; gap: 2px; background: #eee; border-radius: 4px; padding: 2px; }
+  .finder-filters .seg button { padding: 5px 10px; border: none; background: transparent; border-radius: 3px; cursor: pointer; font-size: 12px; }
+  .finder-filters .seg button.active { background: #fff; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+  .finder-filters .tag-btn { padding: 5px 12px; border: 1px solid #ccc; border-radius: 12px; background: #fff; cursor: pointer; font-size: 12px; }
+  .finder-filters .tag-btn.active { background: #333; color: #fff; border-color: #333; }
+  .finder-filters input[type="text"] { margin-left: auto; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+  .buffett-section { margin-bottom: 14px; }
+  .buffett-section-title { font-weight: bold; font-size: 13px; margin-bottom: 6px; }
+  .buffett-conclusion { background: #eef4ff; color: #1864ab; padding: 10px; border-radius: 6px; font-weight: bold; margin-bottom: 14px; }
+  .buffett-list { margin: 0; padding-left: 18px; font-size: 13px; color: #555; }
+  .buffett-list li { margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -78,17 +92,17 @@
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="daily">매일 추천 종목</button>
+    <button class="tab-btn active" data-tab="finder">종목 파인더</button>
     <button class="tab-btn" data-tab="holdings">보유종목</button>
   </div>
 
-  <div class="tab-panel active" id="panel-daily">
+  <div class="tab-panel active" id="panel-finder">
     <div class="cal-header">
-      <button id="calPrevBtn">‹</button>
-      <span id="calMonthLabel"></span>
-      <button id="calNextBtn">›</button>
+      <button id="finderCalPrevBtn">‹</button>
+      <span id="finderCalMonthLabel"></span>
+      <button id="finderCalNextBtn">›</button>
     </div>
-    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-grid" id="finderCalGrid"></div>
   </div>
 
   <div class="tab-panel" id="panel-holdings">
@@ -99,7 +113,7 @@
         <option value="kr">국내</option>
         <option value="us">해외</option>
       </select>
-      <input type="number" id="hBuyPrice" placeholder="매입가" step="0.01" />
+      <input type="number" id="hBuyPrice" placeholder="매입가 (원)" step="0.01" />
       <input type="number" id="hQuantity" placeholder="수량" step="1" />
       <button id="hAddBtn">추가</button>
       <button id="hCancelBtn" style="display:none">취소</button>
@@ -108,83 +122,62 @@
       <thead>
         <tr>
           <th>티커</th><th>종목명</th><th>매입가</th><th>수량</th><th>현재가</th>
-          <th>평가손익</th><th>손익률</th><th>의견</th><th>코멘트</th><th style="text-align:left">메모</th><th></th>
+          <th>평가손익</th><th>손익률</th><th>의견</th><th>매수추천가</th><th>손절가</th><th>목표가</th><th>코멘트</th><th></th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </div>
 
-  <div class="modal-overlay" id="dayModal">
+  <div class="modal-overlay" id="buffettModal">
+    <div class="modal-box" style="width:480px">
+      <div class="modal-header">
+        <span id="buffettModalTitle"></span>
+        <button id="buffettModalCloseBtn">닫기</button>
+      </div>
+      <div id="buffettModalBody"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="finderModal">
     <div class="modal-box">
       <div class="modal-header">
-        <span id="modalDate"></span>
-        <button id="modalCloseBtn">닫기</button>
+        <span id="finderModalDate"></span>
+        <button id="finderModalCloseBtn">닫기</button>
       </div>
-      <div class="modal-filters">
-        <select id="filterOpinion">
-          <option value="all">의견 전체</option>
-          <option value="매수">매수</option>
-          <option value="보유">보유</option>
-          <option value="매도">매도</option>
-        </select>
-        <select id="filterMarket">
-          <option value="all">시장 전체</option>
-          <option value="kr">국내</option>
-          <option value="us">해외</option>
-        </select>
+      <div class="finder-filters">
+        <div class="seg" id="finderMarketSeg">
+          <button data-value="all" class="active">전체</button>
+          <button data-value="kr">국내</button>
+          <button data-value="us">해외</button>
+        </div>
+        <div class="seg" id="finderOpinionSeg">
+          <button data-value="all" class="active">전체</button>
+          <button data-value="매수">매수</button>
+          <button data-value="매도">매도</button>
+          <button data-value="보유">보유</button>
+        </div>
+        <button class="tag-btn" data-tag="고배당주">고배당주</button>
+        <button class="tag-btn" data-tag="성장주">성장주</button>
+        <input type="text" id="finderSearch" placeholder="종목명 또는 티커 검색" />
       </div>
-      <div class="card-grid" id="modalCards"></div>
-      <div class="modal-footer">
-        <a id="modalReportLink" href="#" target="_blank">보고서 보기</a>
-        <span class="modal-note">서버(run_pipeline.bat)가 켜져 있어야 열립니다. 해당 날짜 보고서가 없으면 빈 화면이 뜰 수 있습니다.</span>
-      </div>
+      <div class="card-grid" id="finderCards"></div>
     </div>
   </div>
 
   <script src="data.js"></script>
-  <script src="history.js"></script>
+  <script src="candidates.js"></script>
   <script>
     const STOCK_DATA = window.STOCK_DATA || { updated_at: "데이터 없음 (run_pipeline.bat 먼저 실행)", results: {} };
+    // 종목 파인더 데이터(discover.py 산출물) — REJECT(버핏 기준 미달)는 검색 대상에서 제외
+    const CANDIDATES_DATA = window.CANDIDATES_DATA || { generated_at: "데이터 없음 (discover.py 먼저 실행)", candidates: [] };
+    const SEARCHABLE_CANDIDATES = CANDIDATES_DATA.candidates.filter((c) => c.warren_score?.verdict !== "REJECT");
     const HOLDINGS_KEY = "stock_app_holdings";
-    const MEMO_KEY = "stock_app_memos";
 
     function escapeHtml(s) {
       return String(s ?? "").replace(/[&<>"']/g, (c) => (
         { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
       ));
-    }
-
-    function loadMemos() {
-      try {
-        return JSON.parse(localStorage.getItem(MEMO_KEY)) || {};
-      } catch (e) {
-        return {};
-      }
-    }
-
-    function getMemo(key) {
-      return loadMemos()[key] || "";
-    }
-
-    function setMemo(key, value) {
-      const memos = loadMemos();
-      if (value) memos[key] = value;
-      else delete memos[key];
-      localStorage.setItem(MEMO_KEY, JSON.stringify(memos));
-    }
-
-    // 메모 <input>은 모달/보유종목 테이블이 다시 그려질 때마다 새로 생성되므로
-    // 이벤트 위임(부모 tbody에 blur 캡처)으로 한 번만 리스너를 건다.
-    function bindMemoInputs(tbody) {
-      tbody.addEventListener(
-        "blur",
-        (e) => {
-          if (!e.target.classList || !e.target.classList.contains("memo-input")) return;
-          setMemo(e.target.dataset.memoKey, e.target.value.trim());
-        },
-        true
-      );
     }
 
     // 종목명 ↔ 티커 매핑 (파이프라인이 분석한 국내 종목만 대상, run_pipeline.py가 채운 name 필드 기반)
@@ -284,24 +277,6 @@
       return [score, opinion, comment];
     }
 
-    // 초보자용 지표 해석 — 표에서 마우스를 올리면 title 툴팁으로 표시.
-    // 기준값(30/70, ma5 vs ma20, macd vs signal)은 jsScoreAndOpinion과 동일해야 함.
-    function describeRSI(rsi) {
-      if (rsi < 30) return `과매도 구간 (RSI ${rsi} < 30) - 많이 떨어져서 반등 가능성이 있는 구간`;
-      if (rsi > 70) return `과매수 구간 (RSI ${rsi} > 70) - 많이 올라서 조정 가능성이 있는 구간`;
-      return `중립 구간 (RSI ${rsi}, 30~70 사이) - 과매수도 과매도도 아님`;
-    }
-
-    function describeMA(ma5, ma20) {
-      if (ma5 > ma20) return `골든크로스 - 5일 평균(${ma5})이 20일 평균(${ma20})보다 위 -> 단기 상승 추세, 매수 신호로 해석`;
-      return `데드크로스 - 5일 평균(${ma5})이 20일 평균(${ma20})보다 아래 -> 단기 하락 추세, 매도 신호로 해석`;
-    }
-
-    function describeMACD(macdLine, macdSignal) {
-      if (macdLine > macdSignal) return `MACD선이 시그널선 위 -> 상승 전환, 매수 쪽 신호`;
-      return `MACD선이 시그널선 아래 -> 하락 전환, 매도 쪽 신호`;
-    }
-
     // 참고용 매매 레벨 — 현재가 대비 고정 비율. 투자 조언이 아닌 대략적인 기준선.
     function priceLevels(price) {
       const round2 = (v) => Math.round(v * 100) / 100;
@@ -313,8 +288,41 @@
       };
     }
 
-    function describeOpinion(r) {
-      return `RSI·이동평균·MACD 3개 신호를 합산한 점수 ${r.score} -> ${r.opinion} 판정 (+2 이상 매수, -2 이하 매도, 그 사이는 보유)`;
+    function formatPrice(market, price) {
+      if (price == null) return "—";
+      return market === "kr"
+        ? "₩" + Math.round(price).toLocaleString("ko-KR")
+        : "$" + price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // ── 종목 파인더(버핏 검토) 전용 헬퍼 — candidates.js의 warren_score(0~10)/buffett_review 사용
+    function gradeLabel(score) {
+      if (score == null) return "—";
+      if (score >= 7) return "우수";
+      if (score >= 5) return "양호";
+      if (score >= 3) return "보통";
+      return "미흡";
+    }
+
+    function finderTechGrade(score, rsi) {
+      if (score == null) return "—";
+      let label = score >= 7 ? "강세" : score >= 5 ? "중립" : "약세";
+      if (rsi != null) {
+        if (rsi >= 70) label += "(과열)";
+        else if (rsi <= 35) label += "(저점)";
+      }
+      return label;
+    }
+
+    function verdictBadge(c) {
+      const ws = c.warren_score;
+      const verdict = ws?.verdict;
+      if (verdict === "WAIT") return { cls: "verdict-wait", text: "관망" };
+      if (verdict === "REJECT") return { cls: "verdict-reject", text: "제외" };
+      if (c.opinion === "매도") return { cls: "opinion-sell", text: "매도" };
+      if (c.opinion === "보유") return { cls: "opinion-hold", text: "보유" };
+      const hint = ws && ws.timing != null && ws.timing < 6 ? " (분할매수)" : "";
+      return { cls: "verdict-pass", text: "매수" + hint };
     }
 
     async function fetchLiveUsAnalysis(ticker) {
@@ -392,180 +400,40 @@
         "마지막 업데이트: " + STOCK_DATA.updated_at;
     }
 
-    const STOCK_HISTORY = window.STOCK_HISTORY || {};
     const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
     const today = new Date();
-    let calYear = today.getFullYear();
-    let calMonth = today.getMonth();
 
     function pad2(n) { return String(n).padStart(2, "0"); }
     function dateKey(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
 
-    function renderCalendar() {
-      document.getElementById("calMonthLabel").textContent = `${calYear}년 ${calMonth + 1}월`;
-      const grid = document.getElementById("calGrid");
-      grid.innerHTML = "";
-
-      WEEKDAYS.forEach((w) => {
-        const cell = document.createElement("div");
-        cell.className = "cal-weekday";
-        cell.textContent = w;
-        grid.appendChild(cell);
-      });
-
-      const firstDow = new Date(calYear, calMonth, 1).getDay();
-      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-      const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
-
-      for (let i = 0; i < firstDow; i++) {
-        const cell = document.createElement("div");
-        cell.className = "cal-cell empty";
-        grid.appendChild(cell);
+    // 버핏 검토 상세 모달 — 종목 파인더 카드의 "AI 분석 보기"가 사용.
+    function openBuffettModal(candidate) {
+      document.getElementById("buffettModalTitle").textContent = `${candidate.name} (${candidate.ticker})`;
+      const review = candidate.buffett_review;
+      const body = document.getElementById("buffettModalBody");
+      if (!review) {
+        body.innerHTML = '<p class="empty-msg">아직 버핏 검토가 준비되지 않았습니다.</p>';
+      } else {
+        const buyReasons = (review.stage4?.buy_reasons || [])
+          .map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+        const riskReasons = (review.stage4?.risk_reasons || [])
+          .map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+        body.innerHTML = `
+          <div class="buffett-conclusion">${escapeHtml(review.stage3_conclusion || "")}</div>
+          ${buyReasons ? `<div class="buffett-section"><div class="buffett-section-title">투자 포인트</div><ul class="buffett-list">${buyReasons}</ul></div>` : ""}
+          ${riskReasons ? `<div class="buffett-section"><div class="buffett-section-title">리스크 요인</div><ul class="buffett-list">${riskReasons}</ul></div>` : ""}
+          ${review.valuation ? `<div class="buffett-section"><div class="buffett-section-title">밸류에이션</div><p>${escapeHtml(review.valuation)}</p></div>` : ""}
+          ${review.stage4?.beginner_advice ? `<div class="buffett-section"><div class="buffett-section-title">초보자 조언</div><p>${escapeHtml(review.stage4.beginner_advice)}</p></div>` : ""}
+          ${review.stage4?.summary ? `<div class="buffett-section" style="color:#999;font-style:italic">${escapeHtml(review.stage4.summary)}</div>` : ""}
+        `;
       }
-
-      for (let d = 1; d <= daysInMonth; d++) {
-        const key = dateKey(calYear, calMonth, d);
-        const day = STOCK_HISTORY[key];
-        const cell = document.createElement("div");
-        cell.className = "cal-cell" + (day ? " has-data" : "") + (key === todayKey ? " today" : "");
-
-        let itemsHtml = "";
-        if (day && day.results) {
-          itemsHtml = Object.values(day.results)
-            .filter((r) => !r.error)
-            .map((r) => `<div class="cal-item">${r.name || "-"} ${r.opinion}의견</div>`)
-            .join("");
-        }
-
-        cell.innerHTML = `<div class="cal-date">${d}</div>${itemsHtml}`;
-        if (day) cell.addEventListener("dblclick", () => openDayModal(key, day));
-        grid.appendChild(cell);
-      }
+      document.getElementById("buffettModal").classList.add("active");
     }
-
-    let currentModalDate = null;
-    let currentModalDay = null;
-
-    // 특정 날짜의 추천이 이후 며칠간 어떻게 됐는지 확인하는 용도 —
-    // 그날의 종가(r.price) 대비 STOCK_DATA(가장 최근 파이프라인 실행 결과)의
-    // 현재가를 비교한다. 오늘 날짜를 보는 경우 두 값이 같아 0%로 나온다.
-    function perfSinceDay(ticker, dayPrice) {
-      const latest = STOCK_DATA.results[ticker];
-      if (!latest || latest.error || typeof latest.price !== "number" || !dayPrice) return null;
-      return ((latest.price - dayPrice) / dayPrice) * 100;
-    }
-
-    // 기술 평가 등급 — jsScoreAndOpinion과 동일한 -3~3 점수 기준에 RSI 과열/저점 표기를 덧붙임
-    function techGrade(r) {
-      let label = r.score >= 2 ? "강세" : r.score <= -2 ? "약세" : "중립";
-      if (r.rsi >= 70) label += "(과열)";
-      else if (r.rsi <= 30) label += "(저점)";
-      return label;
-    }
-
-    function renderModalCards() {
-      const grid = document.getElementById("modalCards");
-      grid.innerHTML = "";
-      const dateStr = currentModalDate;
-      const day = currentModalDay;
-      const opinionFilter = document.getElementById("filterOpinion").value;
-      const marketFilter = document.getElementById("filterMarket").value;
-
-      let entries = Object.entries(day.results || {}).sort((a, b) => {
-        const scoreA = a[1].score ?? -99;
-        const scoreB = b[1].score ?? -99;
-        return scoreB - scoreA;
-      });
-
-      entries = entries.filter(([, r]) => {
-        if (opinionFilter !== "all" && r.opinion !== opinionFilter) return false;
-        if (marketFilter !== "all" && r.market !== marketFilter) return false;
-        return true;
-      });
-
-      if (entries.length === 0) {
-        grid.innerHTML = '<p class="empty-msg">데이터 없음</p>';
-        return;
-      }
-
-      for (const [ticker, r] of entries) {
-        const name = r.name || "-";
-        const memoKey = `${dateStr}_${ticker}`;
-        const memoInput = `<input type="text" class="memo-input" data-memo-key="${memoKey}" value="${escapeHtml(getMemo(memoKey))}" placeholder="메모 입력">`;
-        const card = document.createElement("div");
-        card.className = "stock-card";
-        if (r.error) {
-          card.innerHTML = `
-            <div class="stock-card-header">
-              <div>
-                <div class="stock-card-title">${name} <span class="ticker">(${ticker})</span></div>
-                <div class="stock-card-sub">${r.market === "kr" ? "국내" : "해외"}</div>
-              </div>
-            </div>
-            <p class="stock-card-summary no-data">데이터 없음 (${r.error})</p>
-            ${memoInput}`;
-        } else {
-          const lv = priceLevels(r.price);
-          const perf = perfSinceDay(ticker, r.price);
-          const perfHtml = perf === null
-            ? ""
-            : ` · <span class="${perf >= 0 ? "pnl-plus" : "pnl-minus"}" title="추천일 종가 대비 최근 시세 등락률">${perf.toFixed(2)}%</span>`;
-          card.innerHTML = `
-            <div class="stock-card-header">
-              <div>
-                <div class="stock-card-title">${name} <span class="ticker">(${ticker})</span></div>
-                <div class="stock-card-sub">${r.market === "kr" ? "국내" : "해외"} · ${r.price}${perfHtml}</div>
-              </div>
-              <span class="stock-card-badge ${opinionClass(r.opinion)}" title="${describeOpinion(r)}">${r.opinion}</span>
-            </div>
-            <p class="stock-card-summary">${r.comment}</p>
-            <div>
-              <div class="stock-card-detail-title">기술 평가 [${techGrade(r)}]</div>
-              <div class="stock-card-detail-body" title="${describeRSI(r.rsi)} / ${describeMA(r.ma5, r.ma20)} / ${describeMACD(r.macd, r.macd_signal)}">
-                RSI ${r.rsi} · MA5 ${r.ma5} / MA20 ${r.ma20} · MACD ${r.macd} / Signal ${r.macd_signal}
-              </div>
-            </div>
-            <div class="stock-card-levels">
-              <div><div class="label">매수</div><div class="value" title="현재가 대비 -2%~0% 구간 - 참고용 매수 희망가, 투자 조언 아님">${lv.buyLow} ~ ${lv.buyHigh}</div></div>
-              <div><div class="label">손절</div><div class="value" title="현재가 대비 -8% - 참고용, 투자 조언 아님">${lv.stopLoss}</div></div>
-              <div><div class="label">목표</div><div class="value" title="현재가 대비 +15% - 참고용, 투자 조언 아님">${lv.target}</div></div>
-            </div>
-            ${memoInput}`;
-        }
-        grid.appendChild(card);
-      }
-    }
-
-    function openDayModal(dateStr, day) {
-      currentModalDate = dateStr;
-      currentModalDay = day;
-      document.getElementById("modalDate").textContent = dateStr;
-      document.getElementById("filterOpinion").value = "all";
-      document.getElementById("filterMarket").value = "all";
-      renderModalCards();
-      document.getElementById("modalReportLink").href = `http://127.0.0.1:8765/report?date=${dateStr}`;
-      document.getElementById("dayModal").classList.add("active");
-    }
-
-    document.getElementById("filterOpinion").addEventListener("change", renderModalCards);
-    document.getElementById("filterMarket").addEventListener("change", renderModalCards);
-    bindMemoInputs(document.getElementById("modalCards"));
-
-    document.getElementById("calPrevBtn").addEventListener("click", () => {
-      calMonth -= 1;
-      if (calMonth < 0) { calMonth = 11; calYear -= 1; }
-      renderCalendar();
+    document.getElementById("buffettModalCloseBtn").addEventListener("click", () => {
+      document.getElementById("buffettModal").classList.remove("active");
     });
-    document.getElementById("calNextBtn").addEventListener("click", () => {
-      calMonth += 1;
-      if (calMonth > 11) { calMonth = 0; calYear += 1; }
-      renderCalendar();
-    });
-    document.getElementById("modalCloseBtn").addEventListener("click", () => {
-      document.getElementById("dayModal").classList.remove("active");
-    });
-    document.getElementById("dayModal").addEventListener("click", (e) => {
-      if (e.target.id === "dayModal") document.getElementById("dayModal").classList.remove("active");
+    document.getElementById("buffettModal").addEventListener("click", (e) => {
+      if (e.target.id === "buffettModal") document.getElementById("buffettModal").classList.remove("active");
     });
 
     function renderHoldingsTab() {
@@ -574,7 +442,7 @@
       const holdings = loadHoldings();
 
       if (holdings.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">등록된 보유종목이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="empty-msg">등록된 보유종목이 없습니다.</td></tr>';
         return;
       }
 
@@ -582,8 +450,6 @@
         const r = getAnalysis(h.ticker);
         const tr = document.createElement("tr");
         const name = (r && r.name) || "-";
-        const memoKey = `hold:${h.ticker}`;
-        const memoInput = `<input type="text" class="memo-input" data-memo-key="${memoKey}" value="${escapeHtml(getMemo(memoKey))}" placeholder="메모 입력">`;
 
         const actionBtns = `<button class="edit-btn" data-idx="${idx}">수정</button>
             <button class="del-btn" data-idx="${idx}">삭제</button>`;
@@ -592,36 +458,36 @@
           if (liveLoading.has(h.ticker)) {
             tr.innerHTML = `
               <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
-              <td colspan="5" class="no-data">실시간 시세 조회 중...</td>
-              <td style="text-align:left">${memoInput}</td>
+              <td colspan="8" class="no-data">실시간 시세 조회 중...</td>
               <td>${actionBtns}</td>`;
           } else if (h.market === "us") {
             const reason = r ? r.error : "실시간 조회 대기 중";
             tr.innerHTML = `
               <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
-              <td colspan="5" class="no-data">지표 없음 — ${reason}</td>
-              <td style="text-align:left">${memoInput}</td>
+              <td colspan="8" class="no-data">지표 없음 — ${reason}</td>
               <td>${actionBtns}</td>`;
             ensureLiveAnalysis(h.ticker, h.market);
           } else {
             const reason = r ? r.error : "tickers.json에 등록되지 않음";
             tr.innerHTML = `
               <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
-              <td colspan="5" class="no-data">지표 없음 — ${reason}. tickers.json에 추가 후 재실행 필요</td>
-              <td style="text-align:left">${memoInput}</td>
+              <td colspan="8" class="no-data">지표 없음 — ${reason}. tickers.json에 추가 후 재실행 필요</td>
               <td>${actionBtns}</td>`;
           }
         } else {
           const pnl = (r.price - h.buyPrice) * h.quantity;
           const pnlPct = ((r.price - h.buyPrice) / h.buyPrice) * 100;
           const pnlClass = pnl >= 0 ? "pnl-plus" : "pnl-minus";
+          const lv = priceLevels(r.price);
           tr.innerHTML = `
             <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td><td>${r.price}</td>
             <td class="${pnlClass}">${pnl.toFixed(0)}</td>
             <td class="${pnlClass}">${pnlPct.toFixed(2)}%</td>
             <td><span class="opinion ${opinionClass(r.opinion)}">${r.opinion}</span></td>
+            <td title="현재가 대비 -2%~0% 구간 - 참고용, 투자 조언 아님">${lv.buyLow} ~ ${lv.buyHigh}</td>
+            <td title="현재가 대비 -8% - 참고용, 투자 조언 아님">${lv.stopLoss}</td>
+            <td title="현재가 대비 +15% - 참고용, 투자 조언 아님">${lv.target}</td>
             <td style="text-align:left">${r.comment}</td>
-            <td style="text-align:left">${memoInput}</td>
             <td>${actionBtns}</td>`;
         }
         tbody.appendChild(tr);
@@ -644,6 +510,7 @@
           const h = holdings[idx];
           document.getElementById("hTicker").value = h.ticker;
           document.getElementById("hMarket").value = h.market;
+          updateBuyPriceUnit();
           document.getElementById("hBuyPrice").value = h.buyPrice;
           document.getElementById("hQuantity").value = h.quantity;
           editingIndex = idx;
@@ -652,6 +519,190 @@
         });
       });
     }
+
+    // ── 종목 파인더 탭 ── 캘린더(아래 renderFinderCalendar)에서 날짜를 더블클릭하면
+    // 이 필터+랭킹 카드 그리드가 모달로 열린다.
+    let finderMarket = "all";
+    let finderOpinionFilter = "all";
+    const finderTags = new Set();
+    let finderSearchTerm = "";
+
+    // candidates.json은 discover.py를 수동 실행할 때마다의 스냅샷 하나뿐이라(진짜 날짜별
+    // 이력이 없음) 캘린더에서도 generated_at 날짜 한 칸만 클릭 가능하다. pad2/dateKey/today는
+    // 관심종목 현황 캘린더(위쪽)에서 이미 정의된 걸 그대로 재사용한다.
+    const finderDateStr = CANDIDATES_DATA.generated_at.split(" ")[0];
+    const finderDateParsed = /^\d{4}-\d{2}-\d{2}$/.test(finderDateStr)
+      ? finderDateStr.split("-").map(Number)
+      : null;
+    let finderCalYear = finderDateParsed ? finderDateParsed[0] : today.getFullYear();
+    let finderCalMonth = finderDateParsed ? finderDateParsed[1] - 1 : today.getMonth();
+
+    function renderFinderCalendar() {
+      document.getElementById("finderCalMonthLabel").textContent = `${finderCalYear}년 ${finderCalMonth + 1}월`;
+      const grid = document.getElementById("finderCalGrid");
+      grid.innerHTML = "";
+
+      WEEKDAYS.forEach((w) => {
+        const cell = document.createElement("div");
+        cell.className = "cal-weekday";
+        cell.textContent = w;
+        grid.appendChild(cell);
+      });
+
+      const firstDow = new Date(finderCalYear, finderCalMonth, 1).getDay();
+      const daysInMonth = new Date(finderCalYear, finderCalMonth + 1, 0).getDate();
+      const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+      const isDataDay = (d) =>
+        finderDateParsed &&
+        finderDateParsed[0] === finderCalYear &&
+        finderDateParsed[1] - 1 === finderCalMonth &&
+        finderDateParsed[2] === d;
+
+      for (let i = 0; i < firstDow; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cal-cell empty";
+        grid.appendChild(cell);
+      }
+
+      const passCount = SEARCHABLE_CANDIDATES.filter((c) => c.warren_score?.verdict === "PASS").length;
+      const waitCount = SEARCHABLE_CANDIDATES.filter((c) => c.warren_score?.verdict === "WAIT").length;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = dateKey(finderCalYear, finderCalMonth, d);
+        const hasData = isDataDay(d);
+        const cell = document.createElement("div");
+        cell.className = "cal-cell" + (hasData ? " has-data" : "") + (key === todayKey ? " today" : "");
+        const itemHtml = hasData
+          ? `<div class="cal-item">매수의견 ${passCount}건,관망 ${waitCount}건</div>`
+          : "";
+        cell.innerHTML = `<div class="cal-date">${d}</div>${itemHtml}`;
+        if (hasData) cell.addEventListener("dblclick", openFinderModal);
+        grid.appendChild(cell);
+      }
+    }
+
+    function openFinderModal() {
+      document.getElementById("finderModalDate").textContent = finderDateStr;
+      renderFinderCards();
+      document.getElementById("finderModal").classList.add("active");
+    }
+    document.getElementById("finderCalPrevBtn").addEventListener("click", () => {
+      finderCalMonth -= 1;
+      if (finderCalMonth < 0) { finderCalMonth = 11; finderCalYear -= 1; }
+      renderFinderCalendar();
+    });
+    document.getElementById("finderCalNextBtn").addEventListener("click", () => {
+      finderCalMonth += 1;
+      if (finderCalMonth > 11) { finderCalMonth = 0; finderCalYear += 1; }
+      renderFinderCalendar();
+    });
+    document.getElementById("finderModalCloseBtn").addEventListener("click", () => {
+      document.getElementById("finderModal").classList.remove("active");
+    });
+    document.getElementById("finderModal").addEventListener("click", (e) => {
+      if (e.target.id === "finderModal") document.getElementById("finderModal").classList.remove("active");
+    });
+
+    function renderFinderCards() {
+      const grid = document.getElementById("finderCards");
+      grid.innerHTML = "";
+
+      const filtered = SEARCHABLE_CANDIDATES
+        .filter((c) => {
+          if (finderMarket !== "all" && c.market !== finderMarket) return false;
+          if (finderOpinionFilter !== "all" && c.opinion !== finderOpinionFilter) return false;
+          if (finderTags.size > 0 && !(c.tags || []).some((t) => finderTags.has(t))) return false;
+          if (finderSearchTerm && !(c.name.includes(finderSearchTerm) || c.ticker.includes(finderSearchTerm))) return false;
+          return true;
+        })
+        .sort((a, b) => (b.warren_score?.total ?? -1) - (a.warren_score?.total ?? -1));
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '<p class="empty-msg">조건에 맞는 종목이 없습니다.</p>';
+        return;
+      }
+
+      filtered.forEach((c, i) => {
+        const ws = c.warren_score;
+        const badge = verdictBadge(c);
+        const summary = c.buffett_review?.stage4?.summary || c.buffett_review?.stage3_conclusion || c.comment;
+        const financeDetail = c.buffett_review?.checklist?.moat || c.buffett_review?.valuation || "";
+        const lv = priceLevels(c.price);
+
+        const card = document.createElement("div");
+        card.className = "stock-card";
+        card.innerHTML = `
+          <div class="stock-card-header">
+            <div>
+              <div class="stock-card-title">${i + 1}. ${escapeHtml(c.name)} <span class="ticker">(${c.ticker})</span></div>
+              <div class="stock-card-sub">
+                ${c.market === "kr" ? "국내" : "해외"} · ${formatPrice(c.market, c.price)}
+                ${ws && ws.total != null ? ` · 총점 ${ws.total.toFixed(1)}` : ""}
+              </div>
+            </div>
+            <span class="stock-card-badge ${badge.cls}">${badge.text}</span>
+          </div>
+          <p class="stock-card-summary">${escapeHtml(summary || "")}</p>
+          <div class="stock-card-cols">
+            <div>
+              <div class="stock-card-detail-title">재무 평가 [${gradeLabel(ws?.financial)}]</div>
+              <div class="stock-card-detail-body">${escapeHtml(financeDetail)}</div>
+            </div>
+            <div>
+              <div class="stock-card-detail-title">기술 평가 [${finderTechGrade(ws?.technical, ws?.rsi)}]</div>
+              <div class="stock-card-detail-body">${escapeHtml(c.comment || "")}</div>
+            </div>
+          </div>
+          <div class="stock-card-levels">
+            <div><div class="label">매수</div><div class="value">${formatPrice(c.market, lv.buyLow)} ~ ${formatPrice(c.market, lv.buyHigh)}</div></div>
+            <div><div class="label">손절</div><div class="value">${formatPrice(c.market, lv.stopLoss)}</div></div>
+            <div><div class="label">목표</div><div class="value">${formatPrice(c.market, lv.target)}</div></div>
+          </div>
+          <button class="stock-card-add-btn add-to-watch-btn">관심종목에 추가</button>
+          <a href="#" class="stock-card-link buffett-link">AI 분석 보기 →</a>
+        `;
+        card.querySelector(".buffett-link").addEventListener("click", (e) => {
+          e.preventDefault();
+          openBuffettModal(c);
+        });
+        card.querySelector(".add-to-watch-btn").addEventListener("click", () => {
+          document.querySelector('.tab-btn[data-tab="holdings"]').click();
+          document.getElementById("hTicker").value = c.ticker;
+          document.getElementById("hMarket").value = c.market;
+          updateBuyPriceUnit();
+          document.getElementById("hBuyPrice").value = c.price;
+          document.getElementById("hQuantity").value = "";
+          document.getElementById("hQuantity").focus();
+        });
+        grid.appendChild(card);
+      });
+    }
+
+    document.getElementById("finderMarketSeg").addEventListener("click", (e) => {
+      if (e.target.tagName !== "BUTTON") return;
+      finderMarket = e.target.dataset.value;
+      document.querySelectorAll("#finderMarketSeg button").forEach((b) => b.classList.toggle("active", b === e.target));
+      renderFinderCards();
+    });
+    document.getElementById("finderOpinionSeg").addEventListener("click", (e) => {
+      if (e.target.tagName !== "BUTTON") return;
+      finderOpinionFilter = e.target.dataset.value;
+      document.querySelectorAll("#finderOpinionSeg button").forEach((b) => b.classList.toggle("active", b === e.target));
+      renderFinderCards();
+    });
+    document.querySelectorAll(".finder-filters .tag-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tag = btn.dataset.tag;
+        if (finderTags.has(tag)) finderTags.delete(tag);
+        else finderTags.add(tag);
+        btn.classList.toggle("active");
+        renderFinderCards();
+      });
+    });
+    document.getElementById("finderSearch").addEventListener("input", (e) => {
+      finderSearchTerm = e.target.value.trim();
+      renderFinderCards();
+    });
 
     let editingIndex = null;
 
@@ -663,6 +714,14 @@
       document.getElementById("hBuyPrice").value = "";
       document.getElementById("hQuantity").value = "";
     }
+
+    // 해외 선택 시 매입가를 달러로 기입하도록 안내 — 실제 저장값 단위는 그대로(원 그대로 저장,
+    // 표시만 안내), 시세 비교는 어차피 같은 시장의 현재가(r.price)와 비교하므로 단위만 맞으면 됨
+    function updateBuyPriceUnit() {
+      const market = document.getElementById("hMarket").value;
+      document.getElementById("hBuyPrice").placeholder = market === "us" ? "매입가 ($)" : "매입가 (원)";
+    }
+    document.getElementById("hMarket").addEventListener("change", updateBuyPriceUnit);
 
     document.getElementById("hAddBtn").addEventListener("click", () => {
       const ticker = resolveTicker(document.getElementById("hTicker").value.trim());
@@ -721,12 +780,11 @@
       });
     });
 
-    bindMemoInputs(document.querySelector("#holdingsTable tbody"));
-
     renderUpdatedAt();
-    renderCalendar();
     renderHoldingsTab();
     populateTickerSuggestions();
+    renderFinderCalendar();
+    updateBuyPriceUnit();
   </script>
 </body>
 </html>
