@@ -183,7 +183,26 @@
   .buffett-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
   .buffett-list li { margin-bottom: 5px; }
 
+  .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .summary-card {
+    background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius-lg);
+    padding: 16px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 6px;
+  }
+  .summary-card-label { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .summary-card-value { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+  .summary-card-value.pnl-plus { color: var(--buy); }
+  .summary-card-value.pnl-minus { color: var(--sell); }
+  .summary-card-cash-input {
+    font-size: 20px; font-weight: 700; color: var(--text); border: none; border-bottom: 1.5px dashed var(--border);
+    padding: 0 0 2px; width: 100%; background: transparent; font-family: inherit;
+  }
+  .summary-card-cash-input:focus { outline: none; border-bottom-color: var(--primary); }
+  .chart-box { background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm); margin-bottom: 20px; }
+  .chart-box-title { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 8px; }
+  .chart-empty { color: var(--text-faint); font-size: 13px; padding: 24px 0; text-align: center; }
+
   @media (max-width: 640px) {
+    .summary-cards { grid-template-columns: repeat(2, 1fr); }
     body { padding: 14px; }
     .tab-panel { padding: 14px; }
     .add-form { flex-direction: column; align-items: stretch; }
@@ -218,6 +237,8 @@
   </div>
 
   <div class="tab-panel" id="panel-holdings">
+    <div class="summary-cards" id="portfolioSummary"></div>
+    <div class="chart-box" id="portfolioChart"></div>
     <div class="add-form">
       <input type="text" id="hTicker" list="tickerSuggestions" placeholder="티커 또는 종목명 (예: 005930, 삼성전자, AAPL)" />
       <datalist id="tickerSuggestions"></datalist>
@@ -449,6 +470,131 @@
       localStorage.setItem(HOLDINGS_KEY, JSON.stringify(holdings));
     }
 
+    // ── 포트폴리오 요약 카드 + 수익률 추이 ──
+    const CASH_KEY = "stock_app_cash";
+    function loadCash() {
+      const v = parseFloat(localStorage.getItem(CASH_KEY));
+      return isNaN(v) ? 0 : v;
+    }
+    function saveCash(v) {
+      localStorage.setItem(CASH_KEY, String(v));
+    }
+
+    // 매도/부분매도로 확정된 손익 기록 — 종합 수익률·그래프가 이 값을 계속 반영해야
+    // "팔아서 이익 확정한 걸 그래프에서 잃어버리는" 일이 없다.
+    const REALIZED_KEY = "stock_app_realized";
+    function loadRealized() {
+      try {
+        return JSON.parse(localStorage.getItem(REALIZED_KEY)) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+    function recordRealizedSale(ticker, quantity, buyPriceKrw, sellPriceKrw) {
+      const list = loadRealized();
+      list.push({
+        date: dateKey(today.getFullYear(), today.getMonth(), today.getDate()),
+        ticker, quantity, buyPriceKrw, sellPriceKrw,
+        realizedPnl: (sellPriceKrw - buyPriceKrw) * quantity,
+      });
+      localStorage.setItem(REALIZED_KEY, JSON.stringify(list));
+    }
+
+    // 이 앱엔 포트폴리오 총자산의 과거 이력이 없었다 — 여기서부터 방문할 때마다
+    // 오늘 날짜로 수익률 스냅샷을 남겨 실제 추이를 쌓아간다(가짜 과거 데이터는 안 만듦).
+    const PORTFOLIO_HISTORY_KEY = "stock_app_portfolio_history";
+    function loadPortfolioHistory() {
+      try {
+        return JSON.parse(localStorage.getItem(PORTFOLIO_HISTORY_KEY)) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+    function recordPortfolioSnapshot(returnPct) {
+      const history = loadPortfolioHistory();
+      const todayStr = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+      const idx = history.findIndex((p) => p.date === todayStr);
+      const point = { date: todayStr, returnPct };
+      if (idx >= 0) history[idx] = point; else history.push(point);
+      localStorage.setItem(PORTFOLIO_HISTORY_KEY, JSON.stringify(history));
+      return history;
+    }
+
+    function renderPortfolioChart(history) {
+      const box = document.getElementById("portfolioChart");
+      if (history.length < 2) {
+        box.innerHTML = `
+          <div class="chart-box-title">수익률 추이</div>
+          <div class="chart-empty">오늘부터 기록을 시작했어요${history.length ? ` (오늘 수익률 ${history[0].returnPct.toFixed(2)}%)` : ""}. 매일 방문하면 여기에 추이가 쌓입니다.</div>`;
+        return;
+      }
+      const w = 640, h = 120, pad = 12;
+      const returns = history.map((p) => p.returnPct);
+      const minR = Math.min(...returns, 0);
+      const maxR = Math.max(...returns, 0);
+      const range = maxR - minR || 1;
+      const stepX = (w - pad * 2) / (returns.length - 1);
+      const pts = returns
+        .map((r, i) => `${(pad + i * stepX).toFixed(1)},${(pad + (1 - (r - minR) / range) * (h - pad * 2)).toFixed(1)}`)
+        .join(" ");
+      const last = returns[returns.length - 1];
+      const color = last >= 0 ? "var(--buy)" : "var(--sell)";
+      box.innerHTML = `
+        <div class="chart-box-title">수익률 추이 (${history[0].date} ~ ${history[history.length - 1].date})</div>
+        <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:120px;display:block" preserveAspectRatio="none">
+          <polyline points="${pts}" fill="none" style="stroke:${color}" stroke-width="2" />
+        </svg>
+        <div style="font-size:12px;color:var(--text-muted)">최근 수익률 ${last.toFixed(2)}%</div>`;
+    }
+
+    function renderPortfolioSummary() {
+      const holdings = loadHoldings();
+      let totalInvested = 0;
+      let totalStockValue = 0;
+      holdings.forEach((h) => {
+        const r = getAnalysis(h.ticker);
+        totalInvested += toKrw(h.market, h.buyPrice) * h.quantity;
+        if (r && !r.error) totalStockValue += toKrw(h.market, r.price) * h.quantity;
+      });
+      const realized = loadRealized();
+      const totalRealizedPnl = realized.reduce((s, e) => s + e.realizedPnl, 0);
+      const totalRealizedCost = realized.reduce((s, e) => s + e.buyPriceKrw * e.quantity, 0);
+      const totalInvestedEver = totalInvested + totalRealizedCost;
+
+      const cash = loadCash();
+      const totalAssets = totalStockValue + cash;
+      const totalReturn = totalInvestedEver > 0
+        ? ((totalStockValue - totalInvested + totalRealizedPnl) / totalInvestedEver) * 100
+        : 0;
+      const returnCls = totalReturn >= 0 ? "pnl-plus" : "pnl-minus";
+
+      document.getElementById("portfolioSummary").innerHTML = `
+        <div class="summary-card">
+          <div class="summary-card-label">💼 총 투자금액</div>
+          <div class="summary-card-value">${formatPrice("kr", totalInvested)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">💵 현금 보유액</div>
+          <input type="number" class="summary-card-cash-input" id="cashInput" value="${cash || ""}" placeholder="0 (직접 입력)" />
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">📊 현재 총자산</div>
+          <div class="summary-card-value">${formatPrice("kr", totalAssets)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">📈 종합 수익률</div>
+          <div class="summary-card-value ${returnCls}">${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(2)}%</div>
+          ${totalRealizedPnl !== 0 ? `<div style="font-size:11px;color:var(--text-faint)">실현손익 ${formatPrice("kr", totalRealizedPnl)} 포함</div>` : ""}
+        </div>`;
+
+      document.getElementById("cashInput").addEventListener("change", (e) => {
+        saveCash(parseFloat(e.target.value) || 0);
+        renderPortfolioSummary();
+      });
+
+      renderPortfolioChart(recordPortfolioSnapshot(totalReturn));
+    }
+
     function opinionClass(opinion) {
       if (opinion === "매수" || opinion === "익절의견") return "opinion-buy";
       if (opinion === "매도" || opinion === "매도의견") return "opinion-sell";
@@ -564,6 +710,7 @@
     });
 
     function renderHoldingsTab() {
+      renderPortfolioSummary();
       const tbody = document.querySelector("#holdingsTable tbody");
       tbody.innerHTML = "";
       const holdings = loadHoldings();
@@ -877,8 +1024,33 @@
       const buyPrice = market === "us" ? buyPriceKrwInput / usdKrwRate : buyPriceKrwInput;
 
       const holdings = loadHoldings();
+
+      // 수정 저장 시 수량이 줄어들면 그 차이를 매도(부분매도 포함)로 처리한다 —
+      // 매도가는 현재가를 기본값으로 쓴다(별도 매도가 입력창을 만드는 대신 가벼운 방식 선택).
+      // 실현손익은 현금에 더해지고, 종합 수익률·그래프에 영구 반영된다.
       if (editingIndex !== null) {
-        holdings[editingIndex] = { ticker, market, buyPrice, quantity };
+        const old = holdings[editingIndex];
+        const soldQty = old.quantity - quantity;
+        let keepOldBuyPrice = false;
+        if (soldQty > 0) {
+          keepOldBuyPrice = true; // 매도로 처리되는 경우 남은 수량의 평균 매입단가는 그대로 유지
+          const r = getAnalysis(old.ticker);
+          const sellPriceKrw = r && !r.error ? toKrw(old.market, r.price) : toKrw(old.market, old.buyPrice);
+          const buyPriceKrw = toKrw(old.market, old.buyPrice);
+          recordRealizedSale(old.ticker, soldQty, buyPriceKrw, sellPriceKrw);
+          saveCash(loadCash() + sellPriceKrw * soldQty);
+          const pnl = (sellPriceKrw - buyPriceKrw) * soldQty;
+          alert(
+            `${old.ticker} ${soldQty.toLocaleString("ko-KR")}주를 ${formatPrice("kr", sellPriceKrw)}에 매도 처리했습니다.\n` +
+            `실현손익 ${formatPrice("kr", pnl)} — 현금 잔고에 반영됐습니다.` +
+            (r && !r.error ? "" : "\n(현재가를 못 가져와 매입가로 대체 계산했습니다.)")
+          );
+        }
+        if (quantity <= 0) {
+          holdings.splice(editingIndex, 1);
+        } else {
+          holdings[editingIndex] = { ticker, market, buyPrice: keepOldBuyPrice ? old.buyPrice : buyPrice, quantity };
+        }
       } else {
         holdings.push({ ticker, market, buyPrice, quantity });
       }
