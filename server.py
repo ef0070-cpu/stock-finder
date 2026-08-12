@@ -1,0 +1,129 @@
+"""run_pipeline.bat이 띄우는 로컬 서버. index.html의 '업데이트' 버튼이 이 서버의
+/run 엔드포인트를 호출하면 파이프라인을 다시 실행해 data.js를 갱신한다.
+이 창을 열어둔 동안만 업데이트 버튼이 동작한다."""
+import http.server
+import json
+import re
+import socketserver
+from datetime import datetime
+from urllib.parse import urlparse, parse_qs
+
+import run_pipeline
+
+PORT = 8765
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def _cors(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._cors()
+        self.end_headers()
+
+    def _serve_file(self, filename, content_type):
+        try:
+            with open(filename, "rb") as f:
+                body = f.read()
+            status = 200
+        except FileNotFoundError:
+            body = b"{}" if filename.endswith(".json") else b""
+            status = 404
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self._cors()
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+        query = parse_qs(parsed.query)
+
+        if path == "/discover_progress.json":
+            self._serve_file(
+                "discover_progress.json", "application/json; charset=utf-8"
+            )
+            return
+
+        if path in ("/discover_progress", "/discover_progress.html"):
+            self._serve_file("discover_progress.html", "text/html; charset=utf-8")
+            return
+
+        if path == "/report":
+            date = query.get("date", [""])[0]
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+                date = datetime.now().strftime("%Y-%m-%d")
+            self._serve_file(
+                f"reports/{date}-발굴보고서.html", "text/html; charset=utf-8"
+            )
+            return
+
+        if path == "/quote":
+            # 브라우저가 Yahoo Finance를 직접 fetch하면 CORS로 막힌다(어떤 origin이든
+            # 마찬가지). 이 서버는 로컬 실행이라 CORS 제약이 없으므로 대신 조회해준다 —
+            # tickers.json에 아직 없는 해외 신규 티커를 보유종목에 추가했을 때 사용.
+            ticker = query.get("ticker", [""])[0]
+            try:
+                result = run_pipeline.analyze_ticker("us", ticker)
+                body = json.dumps(
+                    {"status": "ok", "result": result}, ensure_ascii=False
+                ).encode("utf-8")
+                status = 200
+            except Exception as e:
+                body = json.dumps(
+                    {"status": "error", "message": str(e)}, ensure_ascii=False
+                ).encode("utf-8")
+                status = 500
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self._cors()
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
+        if path != "/run":
+            self.send_response(404)
+            self._cors()
+            self.end_headers()
+            return
+
+        try:
+            run_pipeline.main()
+            body = json.dumps({"status": "ok"}).encode("utf-8")
+            status = 200
+        except SystemExit:
+            body = json.dumps(
+                {"status": "error", "message": "tickers.json에 등록된 티커가 없음"}
+            ).encode("utf-8")
+            status = 500
+        except Exception as e:
+            body = json.dumps({"status": "error", "message": str(e)}).encode("utf-8")
+            status = 500
+
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self._cors()
+        self.end_headers()
+        self.wfile.write(body)
+
+
+def main():
+    print("초기 데이터 갱신 중...")
+    try:
+        run_pipeline.main()
+    except SystemExit:
+        pass
+
+    print(f"\n서버 시작 (포트 {PORT}) - index.html의 '업데이트' 버튼이 이 서버를 호출합니다.")
+    print("이 창을 닫으면 서버가 멈추고 업데이트 버튼도 동작하지 않습니다.")
+    with socketserver.TCPServer(("127.0.0.1", PORT), Handler) as httpd:
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            pass
+
+
+if __name__ == "__main__":
+    main()
