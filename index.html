@@ -23,18 +23,42 @@
   .pnl-plus { color: #c92a2a; }
   .pnl-minus { color: #1864ab; }
   .no-data { color: #aaa; font-style: italic; }
+  .cal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .cal-header button { padding: 4px 10px; border: none; background: #333; color: #fff; border-radius: 4px; cursor: pointer; }
+  .cal-header span { font-weight: bold; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #eee; border: 1px solid #eee; }
+  .cal-weekday { background: #fafafa; color: #777; font-size: 12px; text-align: center; padding: 6px 0; }
+  .cal-cell { background: #fff; min-height: 90px; padding: 6px; font-size: 12px; }
+  .cal-cell.empty { background: #fafafa; }
+  .cal-cell.has-data { cursor: pointer; }
+  .cal-cell.has-data:hover { background: #fff8f0; }
+  .cal-cell .cal-date { font-weight: bold; color: #555; margin-bottom: 4px; }
+  .cal-cell.today .cal-date { color: #c92a2a; }
+  .cal-cell .cal-item { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 100; }
+  .modal-overlay.active { display: flex; }
+  .modal-box { background: #fff; border-radius: 8px; padding: 16px; max-width: 95vw; max-height: 85vh; overflow: auto; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 20px; }
+  .modal-header button { border: none; background: #eee; border-radius: 4px; cursor: pointer; padding: 4px 10px; }
+  .modal-footer { margin-top: 12px; }
+  .modal-note { color: #999; font-size: 12px; margin-left: 8px; }
   .add-form { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
   .add-form input { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
   .add-form select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
   .add-form button { padding: 6px 14px; border: none; background: #333; color: #fff; border-radius: 4px; cursor: pointer; }
   .del-btn { padding: 4px 10px; border: none; background: #eee; color: #c92a2a; border-radius: 4px; cursor: pointer; }
   .empty-msg { color: #999; padding: 20px 0; text-align: center; }
+  .modal-filters { display: flex; gap: 8px; margin-bottom: 10px; }
+  .modal-filters select { padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; }
+  .memo-input { width: 100%; box-sizing: border-box; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; }
 </style>
 </head>
 <body>
   <h1>주식 트래커</h1>
   <div class="updated-at">
     <span id="updatedAt"></span>
+    <button id="updateBtn">업데이트</button>
+    <span id="updateStatus"></span>
   </div>
 
   <div class="tabs">
@@ -43,16 +67,12 @@
   </div>
 
   <div class="tab-panel active" id="panel-daily">
-    <table id="dailyTable">
-      <thead>
-        <tr>
-          <th>티커</th><th>종목명</th><th>시장</th><th>현재가</th><th>RSI</th>
-          <th>MA5</th><th>MA20</th><th>MACD</th><th>Signal</th>
-          <th>의견</th><th>코멘트</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <div class="cal-header">
+      <button id="calPrevBtn">‹</button>
+      <span id="calMonthLabel"></span>
+      <button id="calNextBtn">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
   </div>
 
   <div class="tab-panel" id="panel-holdings">
@@ -72,17 +92,95 @@
       <thead>
         <tr>
           <th>티커</th><th>종목명</th><th>매입가</th><th>수량</th><th>현재가</th>
-          <th>평가손익</th><th>손익률</th><th>의견</th><th>코멘트</th><th></th>
+          <th>평가손익</th><th>손익률</th><th>의견</th><th>코멘트</th><th style="text-align:left">메모</th><th></th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </div>
 
+  <div class="modal-overlay" id="dayModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="modalDate"></span>
+        <button id="modalCloseBtn">닫기</button>
+      </div>
+      <div class="modal-filters">
+        <select id="filterOpinion">
+          <option value="all">의견 전체</option>
+          <option value="매수">매수</option>
+          <option value="보유">보유</option>
+          <option value="매도">매도</option>
+        </select>
+        <select id="filterMarket">
+          <option value="all">시장 전체</option>
+          <option value="kr">국내</option>
+          <option value="us">해외</option>
+        </select>
+      </div>
+      <table id="modalTable">
+        <thead>
+          <tr>
+            <th>티커</th><th>종목명</th><th>시장</th><th>현재가</th><th>RSI</th>
+            <th>MA5</th><th>MA20</th><th>MACD</th><th>Signal</th>
+            <th>의견</th><th>매수구간(-2~0%)</th><th>손절가(-8%)</th><th>목표가(+15%)</th>
+            <th>현재 대비</th>
+            <th style="text-align:left">코멘트</th><th style="text-align:left">메모</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="modal-footer">
+        <a id="modalReportLink" href="#" target="_blank">보고서 보기</a>
+        <span class="modal-note">서버(run_pipeline.bat)가 켜져 있어야 열립니다. 해당 날짜 보고서가 없으면 빈 화면이 뜰 수 있습니다.</span>
+      </div>
+    </div>
+  </div>
+
   <script src="data.js"></script>
+  <script src="history.js"></script>
   <script>
-    const STOCK_DATA = window.STOCK_DATA || { updated_at: "데이터 없음 (첫 자동 업데이트 대기 중)", results: {} };
+    const STOCK_DATA = window.STOCK_DATA || { updated_at: "데이터 없음 (run_pipeline.bat 먼저 실행)", results: {} };
     const HOLDINGS_KEY = "stock_app_holdings";
+    const MEMO_KEY = "stock_app_memos";
+
+    function escapeHtml(s) {
+      return String(s ?? "").replace(/[&<>"']/g, (c) => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+      ));
+    }
+
+    function loadMemos() {
+      try {
+        return JSON.parse(localStorage.getItem(MEMO_KEY)) || {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function getMemo(key) {
+      return loadMemos()[key] || "";
+    }
+
+    function setMemo(key, value) {
+      const memos = loadMemos();
+      if (value) memos[key] = value;
+      else delete memos[key];
+      localStorage.setItem(MEMO_KEY, JSON.stringify(memos));
+    }
+
+    // 메모 <input>은 모달/보유종목 테이블이 다시 그려질 때마다 새로 생성되므로
+    // 이벤트 위임(부모 tbody에 blur 캡처)으로 한 번만 리스너를 건다.
+    function bindMemoInputs(tbody) {
+      tbody.addEventListener(
+        "blur",
+        (e) => {
+          if (!e.target.classList || !e.target.classList.contains("memo-input")) return;
+          setMemo(e.target.dataset.memoKey, e.target.value.trim());
+        },
+        true
+      );
+    }
 
     // 종목명 ↔ 티커 매핑 (파이프라인이 분석한 국내 종목만 대상, run_pipeline.py가 채운 name 필드 기반)
     const nameToTicker = {};
@@ -181,6 +279,39 @@
       return [score, opinion, comment];
     }
 
+    // 초보자용 지표 해석 — 표에서 마우스를 올리면 title 툴팁으로 표시.
+    // 기준값(30/70, ma5 vs ma20, macd vs signal)은 jsScoreAndOpinion과 동일해야 함.
+    function describeRSI(rsi) {
+      if (rsi < 30) return `과매도 구간 (RSI ${rsi} < 30) - 많이 떨어져서 반등 가능성이 있는 구간`;
+      if (rsi > 70) return `과매수 구간 (RSI ${rsi} > 70) - 많이 올라서 조정 가능성이 있는 구간`;
+      return `중립 구간 (RSI ${rsi}, 30~70 사이) - 과매수도 과매도도 아님`;
+    }
+
+    function describeMA(ma5, ma20) {
+      if (ma5 > ma20) return `골든크로스 - 5일 평균(${ma5})이 20일 평균(${ma20})보다 위 -> 단기 상승 추세, 매수 신호로 해석`;
+      return `데드크로스 - 5일 평균(${ma5})이 20일 평균(${ma20})보다 아래 -> 단기 하락 추세, 매도 신호로 해석`;
+    }
+
+    function describeMACD(macdLine, macdSignal) {
+      if (macdLine > macdSignal) return `MACD선이 시그널선 위 -> 상승 전환, 매수 쪽 신호`;
+      return `MACD선이 시그널선 아래 -> 하락 전환, 매도 쪽 신호`;
+    }
+
+    // 참고용 매매 레벨 — 현재가 대비 고정 비율. 투자 조언이 아닌 대략적인 기준선.
+    function priceLevels(price) {
+      const round2 = (v) => Math.round(v * 100) / 100;
+      return {
+        buyLow: round2(price * 0.98),
+        buyHigh: round2(price),
+        stopLoss: round2(price * 0.92),
+        target: round2(price * 1.15),
+      };
+    }
+
+    function describeOpinion(r) {
+      return `RSI·이동평균·MACD 3개 신호를 합산한 점수 ${r.score} -> ${r.opinion} 판정 (+2 이상 매수, -2 이하 매도, 그 사이는 보유)`;
+    }
+
     async function fetchLiveUsAnalysis(ticker) {
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=6mo&interval=1d`;
       const res = await fetch(url);
@@ -256,39 +387,160 @@
         "마지막 업데이트: " + STOCK_DATA.updated_at;
     }
 
-    function renderDailyTab() {
-      const tbody = document.querySelector("#dailyTable tbody");
-      tbody.innerHTML = "";
-      const entries = Object.entries(STOCK_DATA.results);
+    const STOCK_HISTORY = window.STOCK_HISTORY || {};
+    const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+    const today = new Date();
+    let calYear = today.getFullYear();
+    let calMonth = today.getMonth();
 
-      if (entries.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">데이터 없음 — 첫 자동 업데이트를 기다려 주세요.</td></tr>';
-        return;
+    function pad2(n) { return String(n).padStart(2, "0"); }
+    function dateKey(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
+
+    function renderCalendar() {
+      document.getElementById("calMonthLabel").textContent = `${calYear}년 ${calMonth + 1}월`;
+      const grid = document.getElementById("calGrid");
+      grid.innerHTML = "";
+
+      WEEKDAYS.forEach((w) => {
+        const cell = document.createElement("div");
+        cell.className = "cal-weekday";
+        cell.textContent = w;
+        grid.appendChild(cell);
+      });
+
+      const firstDow = new Date(calYear, calMonth, 1).getDay();
+      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+      const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+      for (let i = 0; i < firstDow; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cal-cell empty";
+        grid.appendChild(cell);
       }
 
-      // 매수 의견 종목을 상단으로 정렬
-      entries.sort((a, b) => {
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = dateKey(calYear, calMonth, d);
+        const day = STOCK_HISTORY[key];
+        const cell = document.createElement("div");
+        cell.className = "cal-cell" + (day ? " has-data" : "") + (key === todayKey ? " today" : "");
+
+        let itemsHtml = "";
+        if (day && day.results) {
+          itemsHtml = Object.values(day.results)
+            .filter((r) => !r.error)
+            .map((r) => `<div class="cal-item">${r.name || "-"} ${r.opinion}의견</div>`)
+            .join("");
+        }
+
+        cell.innerHTML = `<div class="cal-date">${d}</div>${itemsHtml}`;
+        if (day) cell.addEventListener("dblclick", () => openDayModal(key, day));
+        grid.appendChild(cell);
+      }
+    }
+
+    let currentModalDate = null;
+    let currentModalDay = null;
+
+    // 특정 날짜의 추천이 이후 며칠간 어떻게 됐는지 확인하는 용도 —
+    // 그날의 종가(r.price) 대비 STOCK_DATA(가장 최근 파이프라인 실행 결과)의
+    // 현재가를 비교한다. 오늘 날짜를 보는 경우 두 값이 같아 0%로 나온다.
+    function perfSinceDay(ticker, dayPrice) {
+      const latest = STOCK_DATA.results[ticker];
+      if (!latest || latest.error || typeof latest.price !== "number" || !dayPrice) return null;
+      return ((latest.price - dayPrice) / dayPrice) * 100;
+    }
+
+    function renderModalRows() {
+      const tbody = document.querySelector("#modalTable tbody");
+      tbody.innerHTML = "";
+      const dateStr = currentModalDate;
+      const day = currentModalDay;
+      const opinionFilter = document.getElementById("filterOpinion").value;
+      const marketFilter = document.getElementById("filterMarket").value;
+
+      let entries = Object.entries(day.results || {}).sort((a, b) => {
         const scoreA = a[1].score ?? -99;
         const scoreB = b[1].score ?? -99;
         return scoreB - scoreA;
       });
 
+      entries = entries.filter(([, r]) => {
+        if (opinionFilter !== "all" && r.opinion !== opinionFilter) return false;
+        if (marketFilter !== "all" && r.market !== marketFilter) return false;
+        return true;
+      });
+
+      if (entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="16" class="empty-msg">데이터 없음</td></tr>';
+      }
+
       for (const [ticker, r] of entries) {
         const tr = document.createElement("tr");
         const name = r.name || "-";
+        const memoKey = `${dateStr}_${ticker}`;
+        const memoInput = `<input type="text" class="memo-input" data-memo-key="${memoKey}" value="${escapeHtml(getMemo(memoKey))}" placeholder="메모 입력">`;
         if (r.error) {
           tr.innerHTML = `<td>${ticker}</td><td>${name}</td><td>${r.market}</td>
-            <td colspan="8" class="no-data">데이터 없음 (${r.error})</td>`;
+            <td colspan="12" class="no-data">데이터 없음 (${r.error})</td>
+            <td style="text-align:left">${memoInput}</td>`;
         } else {
+          const rsiTip = describeRSI(r.rsi);
+          const maTip = describeMA(r.ma5, r.ma20);
+          const macdTip = describeMACD(r.macd, r.macd_signal);
+          const opinionTip = describeOpinion(r);
+          const lv = priceLevels(r.price);
+          const perf = perfSinceDay(ticker, r.price);
+          const perfHtml = perf === null
+            ? '<span class="no-data">-</span>'
+            : `<span class="${perf >= 0 ? "pnl-plus" : "pnl-minus"}" title="추천일 종가 대비 최근 시세 등락률">${perf.toFixed(2)}%</span>`;
           tr.innerHTML = `
-            <td>${ticker}</td><td>${name}</td><td>${r.market}</td><td>${r.price}</td><td>${r.rsi}</td>
-            <td>${r.ma5}</td><td>${r.ma20}</td><td>${r.macd}</td><td>${r.macd_signal}</td>
-            <td><span class="opinion ${opinionClass(r.opinion)}">${r.opinion}</span></td>
-            <td style="text-align:left">${r.comment}</td>`;
+            <td>${ticker}</td><td>${name}</td><td>${r.market}</td><td>${r.price}</td>
+            <td title="${rsiTip}">${r.rsi}</td>
+            <td title="${maTip}">${r.ma5}</td><td title="${maTip}">${r.ma20}</td>
+            <td title="${macdTip}">${r.macd}</td><td title="${macdTip}">${r.macd_signal}</td>
+            <td><span class="opinion ${opinionClass(r.opinion)}" title="${opinionTip}">${r.opinion}</span></td>
+            <td title="현재가 대비 -2%~0% 구간 - 참고용 매수 희망가, 투자 조언 아님">${lv.buyLow} ~ ${lv.buyHigh}</td>
+            <td title="현재가 대비 -8% - 이 아래로 떨어지면 손절을 고려(참고용, 투자 조언 아님)">${lv.stopLoss}</td>
+            <td title="현재가 대비 +15% - 이 가격대에서 일부 익절을 고려(참고용, 투자 조언 아님)">${lv.target}</td>
+            <td>${perfHtml}</td>
+            <td style="text-align:left">${r.comment}</td>
+            <td style="text-align:left">${memoInput}</td>`;
         }
         tbody.appendChild(tr);
       }
     }
+
+    function openDayModal(dateStr, day) {
+      currentModalDate = dateStr;
+      currentModalDay = day;
+      document.getElementById("modalDate").textContent = dateStr;
+      document.getElementById("filterOpinion").value = "all";
+      document.getElementById("filterMarket").value = "all";
+      renderModalRows();
+      document.getElementById("modalReportLink").href = `http://127.0.0.1:8765/report?date=${dateStr}`;
+      document.getElementById("dayModal").classList.add("active");
+    }
+
+    document.getElementById("filterOpinion").addEventListener("change", renderModalRows);
+    document.getElementById("filterMarket").addEventListener("change", renderModalRows);
+    bindMemoInputs(document.querySelector("#modalTable tbody"));
+
+    document.getElementById("calPrevBtn").addEventListener("click", () => {
+      calMonth -= 1;
+      if (calMonth < 0) { calMonth = 11; calYear -= 1; }
+      renderCalendar();
+    });
+    document.getElementById("calNextBtn").addEventListener("click", () => {
+      calMonth += 1;
+      if (calMonth > 11) { calMonth = 0; calYear += 1; }
+      renderCalendar();
+    });
+    document.getElementById("modalCloseBtn").addEventListener("click", () => {
+      document.getElementById("dayModal").classList.remove("active");
+    });
+    document.getElementById("dayModal").addEventListener("click", (e) => {
+      if (e.target.id === "dayModal") document.getElementById("dayModal").classList.remove("active");
+    });
 
     function renderHoldingsTab() {
       const tbody = document.querySelector("#holdingsTable tbody");
@@ -296,7 +548,7 @@
       const holdings = loadHoldings();
 
       if (holdings.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="empty-msg">등록된 보유종목이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">등록된 보유종목이 없습니다.</td></tr>';
         return;
       }
 
@@ -304,6 +556,8 @@
         const r = getAnalysis(h.ticker);
         const tr = document.createElement("tr");
         const name = (r && r.name) || "-";
+        const memoKey = `hold:${h.ticker}`;
+        const memoInput = `<input type="text" class="memo-input" data-memo-key="${memoKey}" value="${escapeHtml(getMemo(memoKey))}" placeholder="메모 입력">`;
 
         const actionBtns = `<button class="edit-btn" data-idx="${idx}">수정</button>
             <button class="del-btn" data-idx="${idx}">삭제</button>`;
@@ -313,12 +567,14 @@
             tr.innerHTML = `
               <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
               <td colspan="5" class="no-data">실시간 시세 조회 중...</td>
+              <td style="text-align:left">${memoInput}</td>
               <td>${actionBtns}</td>`;
           } else if (h.market === "us") {
             const reason = r ? r.error : "실시간 조회 대기 중";
             tr.innerHTML = `
               <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
               <td colspan="5" class="no-data">지표 없음 — ${reason}</td>
+              <td style="text-align:left">${memoInput}</td>
               <td>${actionBtns}</td>`;
             ensureLiveAnalysis(h.ticker, h.market);
           } else {
@@ -326,6 +582,7 @@
             tr.innerHTML = `
               <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
               <td colspan="5" class="no-data">지표 없음 — ${reason}. tickers.json에 추가 후 재실행 필요</td>
+              <td style="text-align:left">${memoInput}</td>
               <td>${actionBtns}</td>`;
           }
         } else {
@@ -338,6 +595,7 @@
             <td class="${pnlClass}">${pnlPct.toFixed(2)}%</td>
             <td><span class="opinion ${opinionClass(r.opinion)}">${r.opinion}</span></td>
             <td style="text-align:left">${r.comment}</td>
+            <td style="text-align:left">${memoInput}</td>
             <td>${actionBtns}</td>`;
         }
         tbody.appendChild(tr);
@@ -406,6 +664,28 @@
       exitEditMode();
     });
 
+    // run_pipeline.bat이 띄워둔 로컬 서버(server.py, 127.0.0.1:8765)의 /run을 호출해
+    // 파이프라인을 재실행시킨다. 서버가 안 떠 있으면(=run_pipeline.bat 미실행) fetch가
+    // 실패하므로 그 경우를 안내 메시지로 구분해서 보여준다.
+    document.getElementById("updateBtn").addEventListener("click", async () => {
+      const btn = document.getElementById("updateBtn");
+      const status = document.getElementById("updateStatus");
+      btn.disabled = true;
+      status.textContent = "업데이트 중... (몇 초 걸릴 수 있습니다)";
+      try {
+        const res = await fetch("http://127.0.0.1:8765/run");
+        const json = await res.json();
+        if (json.status === "ok") {
+          location.reload();
+          return;
+        }
+        status.textContent = "업데이트 실패: " + json.message;
+      } catch (e) {
+        status.textContent = "서버에 연결할 수 없습니다 — run_pipeline.bat을 먼저 실행해 두세요.";
+      }
+      btn.disabled = false;
+    });
+
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
@@ -415,8 +695,10 @@
       });
     });
 
+    bindMemoInputs(document.querySelector("#holdingsTable tbody"));
+
     renderUpdatedAt();
-    renderDailyTab();
+    renderCalendar();
     renderHoldingsTab();
     populateTickerSuggestions();
   </script>
