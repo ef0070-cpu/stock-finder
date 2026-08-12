@@ -4,83 +4,194 @@
 <meta charset="UTF-8" />
 <title>주식 트래커</title>
 <style>
-  body { font-family: "Malgun Gothic", sans-serif; margin: 0; padding: 20px; background: #f5f5f5; color: #222; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  .updated-at { color: #777; font-size: 13px; margin-bottom: 16px; }
-  .tabs { display: flex; gap: 4px; margin-bottom: 12px; }
-  .tab-btn { padding: 8px 16px; border: none; background: #ddd; cursor: pointer; border-radius: 6px 6px 0 0; font-size: 14px; }
-  .tab-btn.active { background: #fff; font-weight: bold; box-shadow: 0 -2px 4px rgba(0,0,0,0.05); }
-  .tab-panel { display: none; background: #fff; padding: 16px; border-radius: 0 6px 6px 6px; }
+  :root {
+    --bg: #f1f5f9;
+    --surface: #ffffff;
+    --border: #e2e8f0;
+    --border-soft: #eef1f6;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --text-faint: #94a3b8;
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --primary-soft: #eef2ff;
+    --buy: #dc2626;
+    --buy-soft: #fee2e2;
+    --sell: #2563eb;
+    --sell-soft: #dbeafe;
+    --hold: #64748b;
+    --hold-soft: #f1f5f9;
+    --warn: #d97706;
+    --warn-soft: #fef3c7;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 16px -4px rgba(15, 23, 42, 0.12), 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow-lg: 0 20px 40px -12px rgba(15, 23, 42, 0.25);
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Malgun Gothic", -apple-system, "Segoe UI", system-ui, sans-serif;
+    margin: 0;
+    padding: 28px;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4px; }
+  .updated-at { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+  .updated-at button#updateBtn {
+    padding: 6px 14px; border: none; border-radius: var(--radius-sm);
+    background: var(--primary); color: #fff; font-weight: 600; font-size: 13px;
+    cursor: pointer; box-shadow: var(--shadow-sm); transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .updated-at button#updateBtn:hover { background: var(--primary-hover); }
+  .updated-at button#updateBtn:active { transform: scale(0.97); }
+  .updated-at button#updateBtn:disabled { opacity: 0.6; cursor: default; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 0; position: relative; z-index: 1; }
+  .tab-btn {
+    padding: 10px 18px; border: none; background: transparent; color: var(--text-muted);
+    cursor: pointer; border-radius: var(--radius-md) var(--radius-md) 0 0; font-size: 14px; font-weight: 600;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .tab-btn:hover { background: rgba(255,255,255,0.6); color: var(--text); }
+  .tab-btn.active { background: var(--surface); color: var(--primary); box-shadow: var(--shadow-sm); }
+  .tab-panel {
+    display: none; background: var(--surface); padding: 22px;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg);
+    box-shadow: var(--shadow-md); border: 1px solid var(--border-soft);
+  }
   .tab-panel.active { display: block; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--border-soft); text-align: right; }
   th:first-child, td:first-child { text-align: left; }
-  th { background: #fafafa; color: #555; }
-  .opinion { font-weight: bold; padding: 2px 8px; border-radius: 4px; }
-  .opinion-buy { background: #ffe3e3; color: #c92a2a; }
-  .opinion-sell { background: #e3f0ff; color: #1864ab; }
-  .opinion-hold { background: #eee; color: #555; }
-  .pnl-plus { color: #c92a2a; }
-  .pnl-minus { color: #1864ab; }
-  .no-data { color: #aaa; font-style: italic; }
-  .cal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-  .cal-header button { padding: 4px 10px; border: none; background: #333; color: #fff; border-radius: 4px; cursor: pointer; }
-  .cal-header span { font-weight: bold; }
-  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #eee; border: 1px solid #eee; }
-  .cal-weekday { background: #fafafa; color: #777; font-size: 12px; text-align: center; padding: 6px 0; }
-  .cal-cell { background: #fff; min-height: 90px; padding: 6px; font-size: 12px; }
-  .cal-cell.empty { background: #fafafa; }
-  .cal-cell.has-data { cursor: pointer; }
-  .cal-cell.has-data:hover { background: #fff8f0; }
-  .cal-cell .cal-date { font-weight: bold; color: #555; margin-bottom: 4px; }
-  .cal-cell.today .cal-date { color: #c92a2a; }
-  .cal-cell .cal-item { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 100; }
+  th { background: transparent; color: var(--text-faint); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  tbody tr:hover { background: var(--bg); }
+  .opinion { font-weight: 700; padding: 3px 10px; border-radius: 999px; font-size: 12px; display: inline-block; white-space: nowrap; }
+  #holdingsTable td, #holdingsTable th { white-space: nowrap; }
+  #holdingsTable td:nth-child(2), #holdingsTable td:nth-child(12), #holdingsTable td.no-data { white-space: normal; }
+  .opinion-buy { background: var(--buy-soft); color: var(--buy); }
+  .opinion-sell { background: var(--sell-soft); color: var(--sell); }
+  .opinion-hold { background: var(--hold-soft); color: var(--hold); }
+  .pnl-plus { color: var(--buy); font-weight: 600; }
+  .pnl-minus { color: var(--sell); font-weight: 600; }
+  .no-data { color: var(--text-faint); font-style: italic; }
+  .cal-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .cal-header button {
+    width: 30px; height: 30px; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    border-radius: 999px; cursor: pointer; font-size: 14px; line-height: 1; transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .cal-header button:hover { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+  .cal-header span { font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
+    background: var(--border-soft); border: 1px solid var(--border-soft); border-radius: var(--radius-md); overflow: hidden;
+  }
+  .cal-weekday { background: var(--surface); color: var(--text-faint); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; text-align: center; padding: 10px 0; }
+  .cal-cell { background: var(--surface); min-height: 92px; padding: 8px; font-size: 12px; transition: background 0.15s ease, box-shadow 0.15s ease; position: relative; }
+  .cal-cell.empty { background: var(--bg); }
+  .cal-cell.has-data { cursor: pointer; background: var(--primary-soft); }
+  .cal-cell.has-data:hover { background: #e0e7ff; box-shadow: inset 0 0 0 1.5px var(--primary); z-index: 2; }
+  .cal-cell .cal-date {
+    font-weight: 700; color: var(--text-muted); margin-bottom: 6px;
+    display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 999px;
+  }
+  .cal-cell.today .cal-date { background: var(--primary); color: #fff; }
+  .cal-cell.has-data:not(.today) .cal-date { color: var(--primary); }
+  .cal-cell .cal-item {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--primary); font-weight: 600; font-size: 11px;
+  }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(2px); }
   .modal-overlay.active { display: flex; }
-  .modal-box { background: #fff; border-radius: 8px; padding: 16px; max-width: 95vw; max-height: 85vh; overflow: auto; }
-  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 20px; }
-  .modal-header button { border: none; background: #eee; border-radius: 4px; cursor: pointer; padding: 4px 10px; }
-  .add-form { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
-  .add-form input { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
-  .add-form select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
-  .add-form button { padding: 6px 14px; border: none; background: #333; color: #fff; border-radius: 4px; cursor: pointer; }
-  .del-btn { padding: 4px 10px; border: none; background: #eee; color: #c92a2a; border-radius: 4px; cursor: pointer; }
-  .empty-msg { color: #999; padding: 20px 0; text-align: center; }
-  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
-  .stock-card { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .modal-box { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; max-width: 95vw; max-height: 85vh; overflow: auto; box-shadow: var(--shadow-lg); }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 20px; }
+  .modal-header span { font-weight: 700; font-size: 16px; }
+  .modal-header button {
+    border: none; background: var(--hold-soft); color: var(--text-muted); border-radius: var(--radius-sm);
+    cursor: pointer; padding: 6px 12px; font-size: 13px; font-weight: 600; transition: background 0.15s ease;
+  }
+  .modal-header button:hover { background: var(--border); color: var(--text); }
+  .add-form { display: flex; gap: 8px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
+  .add-form input, .add-form select {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 13px; background: var(--surface); color: var(--text);
+  }
+  .add-form input:focus, .add-form select:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
+  .add-form button {
+    padding: 8px 16px; border: none; background: var(--primary); color: #fff; font-weight: 600;
+    border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; transition: background 0.15s ease;
+  }
+  .add-form button:hover { background: var(--primary-hover); }
+  .del-btn, .edit-btn {
+    padding: 5px 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted);
+    border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; font-weight: 600; margin-left: 4px; transition: all 0.15s ease;
+  }
+  .del-btn:hover { background: var(--buy-soft); color: var(--buy); border-color: var(--buy-soft); }
+  .edit-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary-soft); }
+  .empty-msg { color: var(--text-faint); padding: 32px 0; text-align: center; font-size: 13px; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; align-items: stretch; }
+  .stock-card {
+    height: 100%; box-sizing: border-box;
+    background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius-lg);
+    padding: 16px; display: flex; flex-direction: column; gap: 10px;
+    box-shadow: var(--shadow-sm); transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  .stock-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
   .stock-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-  .stock-card-title { font-weight: bold; font-size: 14px; }
-  .stock-card-title .ticker { color: #999; font-weight: normal; font-size: 12px; }
-  .stock-card-sub { color: #999; font-size: 12px; margin-top: 2px; }
-  .stock-card-badge { flex-shrink: 0; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; color: #fff; }
-  .stock-card-badge.opinion-buy { background: #c92a2a; }
-  .stock-card-badge.opinion-sell { background: #1864ab; }
-  .stock-card-badge.opinion-hold { background: #999; }
-  .stock-card-summary { font-size: 13px; color: #555; line-height: 1.4; border-top: 1px solid #f0f0f0; padding-top: 8px; }
-  .stock-card-detail-title { font-weight: bold; font-size: 12px; color: #333; margin-bottom: 2px; }
-  .stock-card-detail-body { font-size: 12px; color: #777; line-height: 1.4; }
-  .stock-card-levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; border-top: 1px solid #f0f0f0; padding-top: 8px; text-align: center; font-size: 12px; }
-  .stock-card-levels .label { color: #999; margin-bottom: 2px; }
-  .stock-card-levels .value { font-weight: bold; color: #333; }
-  .stock-card-cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; border-top: 1px solid #f0f0f0; padding-top: 8px; }
-  .stock-card-badge.verdict-pass { background: #c92a2a; }
-  .stock-card-badge.verdict-wait { background: #e8a33d; }
-  .stock-card-badge.verdict-reject { background: #999; }
-  .stock-card-link { font-size: 12px; color: #1864ab; text-decoration: none; }
+  .stock-card-title { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
+  .stock-card-title .ticker { color: var(--text-faint); font-weight: 500; font-size: 12px; }
+  .stock-card-sub { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+  .stock-card-badge { flex-shrink: 0; padding: 4px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #fff; letter-spacing: 0.01em; }
+  .stock-card-badge.opinion-buy { background: var(--buy); }
+  .stock-card-badge.opinion-sell { background: var(--sell); }
+  .stock-card-badge.opinion-hold { background: var(--hold); }
+  .stock-card-summary { font-size: 13px; color: var(--text-muted); line-height: 1.5; border-top: 1px solid var(--border-soft); padding-top: 10px; }
+  .stock-card-detail-title { font-weight: 700; font-size: 11px; color: var(--text); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .stock-card-detail-body { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  .stock-card-levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; border-top: 1px solid var(--border-soft); padding-top: 10px; text-align: center; font-size: 12px; }
+  .stock-card-levels .label { color: var(--text-faint); margin-bottom: 3px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .stock-card-levels .value { font-weight: 700; color: var(--text); }
+  .stock-card-cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; border-top: 1px solid var(--border-soft); padding-top: 10px; }
+  .stock-card-badge.verdict-pass { background: var(--buy); }
+  .stock-card-badge.verdict-wait { background: var(--warn); }
+  .stock-card-badge.verdict-reject { background: var(--hold); }
+  .stock-card-link { font-size: 12px; color: var(--primary); text-decoration: none; font-weight: 600; }
   .stock-card-link:hover { text-decoration: underline; }
-  .stock-card-add-btn { padding: 6px 0; border: 1px solid #ccc; background: #fff; color: #555; border-radius: 4px; cursor: pointer; font-size: 12px; }
-  .finder-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
-  .finder-filters .seg { display: flex; gap: 2px; background: #eee; border-radius: 4px; padding: 2px; }
-  .finder-filters .seg button { padding: 5px 10px; border: none; background: transparent; border-radius: 3px; cursor: pointer; font-size: 12px; }
-  .finder-filters .seg button.active { background: #fff; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-  .finder-filters .tag-btn { padding: 5px 12px; border: 1px solid #ccc; border-radius: 12px; background: #fff; cursor: pointer; font-size: 12px; }
-  .finder-filters .tag-btn.active { background: #333; color: #fff; border-color: #333; }
-  .finder-filters input[type="text"] { margin-left: auto; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
-  .buffett-section { margin-bottom: 14px; }
-  .buffett-section-title { font-weight: bold; font-size: 13px; margin-bottom: 6px; }
-  .buffett-conclusion { background: #eef4ff; color: #1864ab; padding: 10px; border-radius: 6px; font-weight: bold; margin-bottom: 14px; }
-  .buffett-list { margin: 0; padding-left: 18px; font-size: 13px; color: #555; }
-  .buffett-list li { margin-bottom: 4px; }
+  .stock-card-add-btn {
+    padding: 7px 0; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted);
+    border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.15s ease;
+  }
+  .stock-card-add-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary-soft); }
+  .finder-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .finder-filters .seg { display: flex; gap: 2px; background: var(--bg); border-radius: var(--radius-sm); padding: 2px; }
+  .finder-filters .seg button { padding: 6px 12px; border: none; background: transparent; color: var(--text-muted); border-radius: calc(var(--radius-sm) - 2px); cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.15s ease; }
+  .finder-filters .seg button.active { background: var(--surface); color: var(--primary); box-shadow: var(--shadow-sm); }
+  .finder-filters .tag-btn { padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-muted); cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.15s ease; }
+  .finder-filters .tag-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .finder-filters .tag-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .finder-filters input[type="text"] {
+    margin-left: auto; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 13px; background: var(--surface); color: var(--text);
+  }
+  .finder-filters input[type="text"]:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
+  .buffett-section { margin-bottom: 16px; }
+  .buffett-section-title { font-weight: 700; font-size: 12px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+  .buffett-conclusion { background: var(--primary-soft); color: var(--primary-hover); padding: 12px 14px; border-radius: var(--radius-md); font-weight: 700; margin-bottom: 16px; font-size: 14px; }
+  .buffett-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+  .buffett-list li { margin-bottom: 5px; }
+
+  @media (max-width: 640px) {
+    body { padding: 14px; }
+    .tab-panel { padding: 14px; }
+    .add-form { flex-direction: column; align-items: stretch; }
+    .add-form input, .add-form select, .add-form button { width: 100%; }
+    .cal-cell { min-height: 64px; padding: 5px; font-size: 11px; }
+    .card-grid { grid-template-columns: 1fr; }
+    table { display: block; overflow-x: auto; white-space: nowrap; }
+    .finder-filters input[type="text"] { margin-left: 0; width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -326,9 +437,17 @@
     }
 
     function opinionClass(opinion) {
-      if (opinion === "매수") return "opinion-buy";
-      if (opinion === "매도") return "opinion-sell";
+      if (opinion === "매수" || opinion === "익절의견") return "opinion-buy";
+      if (opinion === "매도" || opinion === "매도의견") return "opinion-sell";
       return "opinion-hold";
+    }
+
+    // 보유종목 전용: 매입가 기준 손절가/목표가에 현재가가 닿았는지 확인해 기술적 의견보다
+    // 우선 표시한다(리스크 관리 신호가 RSI 등 기술적 판정보다 더 급함).
+    function positionSignal(currentPrice, lv, fallbackOpinion) {
+      if (currentPrice <= lv.stopLoss) return "매도의견";
+      if (currentPrice >= lv.target) return "익절의견";
+      return fallbackOpinion;
     }
 
     function renderUpdatedAt() {
@@ -395,20 +514,20 @@
         if (!r || r.error) {
           if (liveLoading.has(h.ticker)) {
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity}</td>
+              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
               <td colspan="8" class="no-data">실시간 시세 조회 중...</td>
               <td>${actionBtns}</td>`;
           } else if (h.market === "us") {
             const reason = r ? r.error : "실시간 조회 대기 중";
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity}</td>
+              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
               <td colspan="8" class="no-data">지표 없음 — ${reason}</td>
               <td>${actionBtns}</td>`;
             ensureLiveAnalysis(h.ticker, h.market);
           } else {
             const reason = r ? r.error : "tickers.json에 등록되지 않음";
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity}</td>
+              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
               <td colspan="8" class="no-data">지표 없음 — ${reason}. tickers.json에 추가 후 재실행 필요</td>
               <td>${actionBtns}</td>`;
           }
@@ -416,15 +535,18 @@
           const pnl = (r.price - h.buyPrice) * h.quantity;
           const pnlPct = ((r.price - h.buyPrice) / h.buyPrice) * 100;
           const pnlClass = pnl >= 0 ? "pnl-plus" : "pnl-minus";
-          const lv = priceLevels(r.price);
+          // 매입가 기준(진입가 대비 고정) — 현재가 기준이면 손절가/목표가가 늘 현재가에서
+          // 같은 비율만큼 떨어져 있어 "근처에 왔는지" 판단이 성립하지 않는다.
+          const lv = priceLevels(h.buyPrice);
+          const displayOpinion = positionSignal(r.price, lv, r.opinion);
           tr.innerHTML = `
-            <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity}</td><td>${formatPrice(h.market, r.price)}</td>
+            <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td><td>${formatPrice(h.market, r.price)}</td>
             <td class="${pnlClass}">${formatPrice(h.market, pnl)}</td>
             <td class="${pnlClass}">${pnlPct.toFixed(2)}%</td>
-            <td><span class="opinion ${opinionClass(r.opinion)}">${r.opinion}</span></td>
-            <td title="현재가 대비 -2%~0% 구간 - 참고용, 투자 조언 아님">${formatPrice(h.market, lv.buyLow)} ~ ${formatPrice(h.market, lv.buyHigh)}</td>
-            <td title="현재가 대비 -8% - 참고용, 투자 조언 아님">${formatPrice(h.market, lv.stopLoss)}</td>
-            <td title="현재가 대비 +15% - 참고용, 투자 조언 아님">${formatPrice(h.market, lv.target)}</td>
+            <td><span class="opinion ${opinionClass(displayOpinion)}">${displayOpinion}</span></td>
+            <td title="매입가 대비 -2%~0% 구간 - 참고용, 투자 조언 아님">${formatPrice(h.market, lv.buyLow)} ~ ${formatPrice(h.market, lv.buyHigh)}</td>
+            <td title="매입가 대비 -8% - 현재가가 이 아래로 오면 '매도의견'으로 표시됨">${formatPrice(h.market, lv.stopLoss)}</td>
+            <td title="매입가 대비 +15% - 현재가가 이 위로 오면 '익절의견'으로 표시됨">${formatPrice(h.market, lv.target)}</td>
             <td style="text-align:left">${r.comment}</td>
             <td>${actionBtns}</td>`;
         }
