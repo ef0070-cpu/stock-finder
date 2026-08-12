@@ -17,6 +17,8 @@
 const { useMemo, useState } = React;
 
 const DATA = window.CANDIDATES_DATA || { generated_at: "데이터 없음 (discover.py 먼저 실행)", candidates: [] };
+// REJECT(버핏 기준 미달)는 검색 대상에서 아예 제외 — 후보 목록·달력 집계·필터 전부 이 배열만 사용
+const SEARCHABLE_CANDIDATES = DATA.candidates.filter(c => c.warren_score?.verdict !== "REJECT");
 const TAG_OPTIONS = ["고배당주", "성장주"];
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -31,9 +33,9 @@ function SummaryBar() {
   const today = new Date().toLocaleDateString("ko-KR", {
     year: "numeric", month: "long", day: "numeric", weekday: "long",
   });
-  const buyCount = DATA.candidates.filter(c => c.opinion === "매수").length;
+  const buyCount = SEARCHABLE_CANDIDATES.filter(c => c.opinion === "매수").length;
   const tagCounts = TAG_OPTIONS.map(t => ({
-    tag: t, count: DATA.candidates.filter(c => (c.tags || []).includes(t)).length,
+    tag: t, count: SEARCHABLE_CANDIDATES.filter(c => (c.tags || []).includes(t)).length,
   })).filter(t => t.count > 0);
   const tip = tagCounts.length
     ? `오늘 매수 후보 ${buyCount}종목 · ` + tagCounts.map(t => `${t.tag} ${t.count}개`).join(" · ")
@@ -320,7 +322,9 @@ function Calendar({ onSelectDay }) {
           >
             {d && <div className="font-bold text-slate-500 mb-1">{d}</div>}
             {d && isDataDay(d) && (
-              <div className="text-blue-600 font-medium">매수 후보 {DATA.candidates.length}종목</div>
+              <div className="text-blue-600 font-medium">
+                매수의견 {SEARCHABLE_CANDIDATES.filter(c => c.warren_score?.verdict === "PASS").length}건,관망 {SEARCHABLE_CANDIDATES.filter(c => c.warren_score?.verdict === "WAIT").length}건
+              </div>
             )}
           </div>
         ))}
@@ -346,7 +350,7 @@ function App() {
   };
 
   const filtered = useMemo(() => {
-    return DATA.candidates
+    return SEARCHABLE_CANDIDATES
       .filter(c => {
         if (market !== "all" && c.market !== market) return false;
         if (opinion !== "all" && c.opinion !== opinion) return false;

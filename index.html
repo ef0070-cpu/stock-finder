@@ -51,6 +51,22 @@
   .modal-filters { display: flex; gap: 8px; margin-bottom: 10px; }
   .modal-filters select { padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; }
   .memo-input { width: 100%; box-sizing: border-box; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .stock-card { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .stock-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .stock-card-title { font-weight: bold; font-size: 14px; }
+  .stock-card-title .ticker { color: #999; font-weight: normal; font-size: 12px; }
+  .stock-card-sub { color: #999; font-size: 12px; margin-top: 2px; }
+  .stock-card-badge { flex-shrink: 0; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; color: #fff; }
+  .stock-card-badge.opinion-buy { background: #c92a2a; }
+  .stock-card-badge.opinion-sell { background: #1864ab; }
+  .stock-card-badge.opinion-hold { background: #999; }
+  .stock-card-summary { font-size: 13px; color: #555; line-height: 1.4; border-top: 1px solid #f0f0f0; padding-top: 8px; }
+  .stock-card-detail-title { font-weight: bold; font-size: 12px; color: #333; margin-bottom: 2px; }
+  .stock-card-detail-body { font-size: 12px; color: #777; line-height: 1.4; }
+  .stock-card-levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; border-top: 1px solid #f0f0f0; padding-top: 8px; text-align: center; font-size: 12px; }
+  .stock-card-levels .label { color: #999; margin-bottom: 2px; }
+  .stock-card-levels .value { font-weight: bold; color: #333; }
 </style>
 </head>
 <body>
@@ -118,18 +134,7 @@
           <option value="us">해외</option>
         </select>
       </div>
-      <table id="modalTable">
-        <thead>
-          <tr>
-            <th>티커</th><th>종목명</th><th>시장</th><th>현재가</th><th>RSI</th>
-            <th>MA5</th><th>MA20</th><th>MACD</th><th>Signal</th>
-            <th>의견</th><th>매수구간(-2~0%)</th><th>손절가(-8%)</th><th>목표가(+15%)</th>
-            <th>현재 대비</th>
-            <th style="text-align:left">코멘트</th><th style="text-align:left">메모</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="card-grid" id="modalCards"></div>
       <div class="modal-footer">
         <a id="modalReportLink" href="#" target="_blank">보고서 보기</a>
         <span class="modal-note">서버(run_pipeline.bat)가 켜져 있어야 열립니다. 해당 날짜 보고서가 없으면 빈 화면이 뜰 수 있습니다.</span>
@@ -450,9 +455,17 @@
       return ((latest.price - dayPrice) / dayPrice) * 100;
     }
 
-    function renderModalRows() {
-      const tbody = document.querySelector("#modalTable tbody");
-      tbody.innerHTML = "";
+    // 기술 평가 등급 — jsScoreAndOpinion과 동일한 -3~3 점수 기준에 RSI 과열/저점 표기를 덧붙임
+    function techGrade(r) {
+      let label = r.score >= 2 ? "강세" : r.score <= -2 ? "약세" : "중립";
+      if (r.rsi >= 70) label += "(과열)";
+      else if (r.rsi <= 30) label += "(저점)";
+      return label;
+    }
+
+    function renderModalCards() {
+      const grid = document.getElementById("modalCards");
+      grid.innerHTML = "";
       const dateStr = currentModalDate;
       const day = currentModalDay;
       const opinionFilter = document.getElementById("filterOpinion").value;
@@ -471,42 +484,55 @@
       });
 
       if (entries.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="empty-msg">데이터 없음</td></tr>';
+        grid.innerHTML = '<p class="empty-msg">데이터 없음</p>';
+        return;
       }
 
       for (const [ticker, r] of entries) {
-        const tr = document.createElement("tr");
         const name = r.name || "-";
         const memoKey = `${dateStr}_${ticker}`;
         const memoInput = `<input type="text" class="memo-input" data-memo-key="${memoKey}" value="${escapeHtml(getMemo(memoKey))}" placeholder="메모 입력">`;
+        const card = document.createElement("div");
+        card.className = "stock-card";
         if (r.error) {
-          tr.innerHTML = `<td>${ticker}</td><td>${name}</td><td>${r.market}</td>
-            <td colspan="12" class="no-data">데이터 없음 (${r.error})</td>
-            <td style="text-align:left">${memoInput}</td>`;
+          card.innerHTML = `
+            <div class="stock-card-header">
+              <div>
+                <div class="stock-card-title">${name} <span class="ticker">(${ticker})</span></div>
+                <div class="stock-card-sub">${r.market === "kr" ? "국내" : "해외"}</div>
+              </div>
+            </div>
+            <p class="stock-card-summary no-data">데이터 없음 (${r.error})</p>
+            ${memoInput}`;
         } else {
-          const rsiTip = describeRSI(r.rsi);
-          const maTip = describeMA(r.ma5, r.ma20);
-          const macdTip = describeMACD(r.macd, r.macd_signal);
-          const opinionTip = describeOpinion(r);
           const lv = priceLevels(r.price);
           const perf = perfSinceDay(ticker, r.price);
           const perfHtml = perf === null
-            ? '<span class="no-data">-</span>'
-            : `<span class="${perf >= 0 ? "pnl-plus" : "pnl-minus"}" title="추천일 종가 대비 최근 시세 등락률">${perf.toFixed(2)}%</span>`;
-          tr.innerHTML = `
-            <td>${ticker}</td><td>${name}</td><td>${r.market}</td><td>${r.price}</td>
-            <td title="${rsiTip}">${r.rsi}</td>
-            <td title="${maTip}">${r.ma5}</td><td title="${maTip}">${r.ma20}</td>
-            <td title="${macdTip}">${r.macd}</td><td title="${macdTip}">${r.macd_signal}</td>
-            <td><span class="opinion ${opinionClass(r.opinion)}" title="${opinionTip}">${r.opinion}</span></td>
-            <td title="현재가 대비 -2%~0% 구간 - 참고용 매수 희망가, 투자 조언 아님">${lv.buyLow} ~ ${lv.buyHigh}</td>
-            <td title="현재가 대비 -8% - 이 아래로 떨어지면 손절을 고려(참고용, 투자 조언 아님)">${lv.stopLoss}</td>
-            <td title="현재가 대비 +15% - 이 가격대에서 일부 익절을 고려(참고용, 투자 조언 아님)">${lv.target}</td>
-            <td>${perfHtml}</td>
-            <td style="text-align:left">${r.comment}</td>
-            <td style="text-align:left">${memoInput}</td>`;
+            ? ""
+            : ` · <span class="${perf >= 0 ? "pnl-plus" : "pnl-minus"}" title="추천일 종가 대비 최근 시세 등락률">${perf.toFixed(2)}%</span>`;
+          card.innerHTML = `
+            <div class="stock-card-header">
+              <div>
+                <div class="stock-card-title">${name} <span class="ticker">(${ticker})</span></div>
+                <div class="stock-card-sub">${r.market === "kr" ? "국내" : "해외"} · ${r.price}${perfHtml}</div>
+              </div>
+              <span class="stock-card-badge ${opinionClass(r.opinion)}" title="${describeOpinion(r)}">${r.opinion}</span>
+            </div>
+            <p class="stock-card-summary">${r.comment}</p>
+            <div>
+              <div class="stock-card-detail-title">기술 평가 [${techGrade(r)}]</div>
+              <div class="stock-card-detail-body" title="${describeRSI(r.rsi)} / ${describeMA(r.ma5, r.ma20)} / ${describeMACD(r.macd, r.macd_signal)}">
+                RSI ${r.rsi} · MA5 ${r.ma5} / MA20 ${r.ma20} · MACD ${r.macd} / Signal ${r.macd_signal}
+              </div>
+            </div>
+            <div class="stock-card-levels">
+              <div><div class="label">매수</div><div class="value" title="현재가 대비 -2%~0% 구간 - 참고용 매수 희망가, 투자 조언 아님">${lv.buyLow} ~ ${lv.buyHigh}</div></div>
+              <div><div class="label">손절</div><div class="value" title="현재가 대비 -8% - 참고용, 투자 조언 아님">${lv.stopLoss}</div></div>
+              <div><div class="label">목표</div><div class="value" title="현재가 대비 +15% - 참고용, 투자 조언 아님">${lv.target}</div></div>
+            </div>
+            ${memoInput}`;
         }
-        tbody.appendChild(tr);
+        grid.appendChild(card);
       }
     }
 
@@ -516,14 +542,14 @@
       document.getElementById("modalDate").textContent = dateStr;
       document.getElementById("filterOpinion").value = "all";
       document.getElementById("filterMarket").value = "all";
-      renderModalRows();
+      renderModalCards();
       document.getElementById("modalReportLink").href = `http://127.0.0.1:8765/report?date=${dateStr}`;
       document.getElementById("dayModal").classList.add("active");
     }
 
-    document.getElementById("filterOpinion").addEventListener("change", renderModalRows);
-    document.getElementById("filterMarket").addEventListener("change", renderModalRows);
-    bindMemoInputs(document.querySelector("#modalTable tbody"));
+    document.getElementById("filterOpinion").addEventListener("change", renderModalCards);
+    document.getElementById("filterMarket").addEventListener("change", renderModalCards);
+    bindMemoInputs(document.getElementById("modalCards"));
 
     document.getElementById("calPrevBtn").addEventListener("click", () => {
       calMonth -= 1;
