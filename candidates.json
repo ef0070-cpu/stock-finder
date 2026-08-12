@@ -3,48 +3,6 @@
   "candidates": [
     {
       "market": "us",
-      "ticker": "NVDA",
-      "name": "NVIDIA Corporation",
-      "price": 217.55,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 57.5 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "PASS",
-        "stage3_conclusion": "① 좋은 기업이고 지금 가격도 적당하다 — 매수를 고려해볼 만하다",
-        "checklist": {
-          "moat": "✅ CUDA 생태계(개발자 500만+)와 AI 가속기 시장 약 80% 점유율로 전환비용 기반 해자가 매우 강함",
-          "consistent_earnings": "✅ 매출 FY21 $167억→FY26 $2,159억로 급증, FY23 성장 정체는 있었지만 적자 없이 흑자 유지",
-          "financial_health": "✅ 부채/자본 0.07배로 사실상 무차입, 현금성자산 $625억 vs 총부채 $114억",
-          "shareholder_friendly": "⚠️ 2026년 5월 배당 25배 인상(연 $1.00), $800억 자사주매입 신규 승인했으나 배당 역사는 짧음",
-          "understandable": "✅ AI 연산에 필수적인 GPU를 설계·판매"
-        },
-        "valuation": "트레일링 PER 약 34배(10년 평균 대비 약 37% 낮음), 다만 PBR 24~26배로 절대 수준은 높아 안전마진은 넉넉하지 않음",
-        "stage4": {
-          "score": {
-            "per": 8,
-            "pbr": 5,
-            "roe": 10,
-            "financial_health": 10
-          },
-          "score_note": "ROE 114%",
-          "buy_reasons": [
-            "데이터센터 매출 초고속 성장 지속",
-            "CUDA 락인 기반 강력한 시장 지배력(약 80%)",
-            "무차입에 가까운 재무구조와 압도적 ROE"
-          ],
-          "risk_reasons": [
-            "PBR 절대 수준이 높아 성장 둔화 시 조정 위험",
-            "AMD·구글TPU·아마존 등 커스텀 반도체 경쟁 심화",
-            "빅테크 AI 설비투자 사이클 둔화 가능성"
-          ],
-          "beginner_advice": "비중 5~10%. 추가매수 신호 — 데이터센터 매출 성장 지속 + PER이 역사평균 이하로 재조정될 때. 손절 조건 — 빅테크 AI 캡엑스 축소나 시장점유율 뚜렷한 하락 시.",
-          "summary": "압도적 지배력과 탄탄한 재무를 갖춘 우량주이나 밸류에이션 부담과 경쟁 심화 리스크를 감안해 분할매수로 접근할 만하다."
-        }
-      }
-    },
-    {
-      "market": "us",
       "ticker": "GOOGL",
       "name": "Alphabet Inc.",
       "price": 357.52,
@@ -84,28 +42,14 @@
           "beginner_advice": "비중 5~10%. 추가매수 신호 — 조정 시 PER 20배 근처 재하락. 손절 조건 — 반독점 리스크 현실화 또는 고점 대비 -20~25% 하락.",
           "summary": "사업 자체는 견고하고 PER은 저렴하지만 최근 급등으로 PBR 안전마진이 얇아졌으니 분할매수가 적절하다."
         }
-      }
-    },
-    {
-      "market": "kr",
-      "ticker": "009150",
-      "name": "삼성전기",
-      "price": 1282000.0,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 47.6 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "WAIT",
-        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
-        "checklist": {
-          "moat": "✅ MLCC 글로벌 2위(점유율 약24%), AI서버 MLCC는 40% 점유",
-          "consistent_earnings": "✅ 2023년 다운사이클에도 영업흑자 유지, 2025년 창사 최대 실적",
-          "financial_health": "✅ 부채비율 49%, 유동비율 186%로 안정적",
-          "shareholder_friendly": "⚠️ 배당수익률 0.7~0.9%로 낮으나 5년 배당성장률 약 10%",
-          "understandable": "✅ AI서버·스마트폰용 MLCC·기판·카메라모듈 제조판매"
-        },
-        "valuation": "2026년 5월 열흘 만에 주가 2배 급등, PER 58~121배·PBR 9~15배로 전통 밴드(10~20배) 크게 상회, 안전마진 없음",
-        "stage4": null
+      },
+      "warren_score": {
+        "financial": 6.2,
+        "technical": 8.8,
+        "timing": 7.7,
+        "total": 7.6,
+        "verdict": "PASS",
+        "rsi": 54.2
       }
     },
     {
@@ -149,288 +93,14 @@
           "beginner_advice": "비중 5~10%. 추가매수 신호 — 조정 시 PER 20배 근처 재하락. 손절 조건 — 반독점 리스크 현실화 또는 고점 대비 -20~25% 하락.",
           "summary": "사업 자체는 견고하고 PER은 저렴하지만 최근 급등으로 PBR 안전마진이 얇아졌으니 분할매수가 적절하다."
         }
-      }
-    },
-    {
-      "market": "kr",
-      "ticker": "373220",
-      "name": "LG에너지솔루션",
-      "price": 355000.0,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 59.2 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "REJECT",
-        "stage3_conclusion": "③ 버핏 기준에 맞지 않는 기업이다 — 투자를 재고해라",
-        "checklist": {
-          "moat": "⚠️ 북미 생산기지 선점(IRA)과 특허·기술력은 강점이나 CATL 대비 원가경쟁력 밀림, 한국 3사 합산 점유율 15.6%까지 하락",
-          "consistent_earnings": "❌ 매출 2년 연속 감소(2023년 33.7조→2025년 23.7조), 2024년 적자, 2025년 4분기 순손실 7,725억원",
-          "financial_health": "⚠️ 부채비율 129%, 차입금비율 77%로 설비투자 부담 큼",
-          "shareholder_friendly": "❌ 2022년 상장 이후 배당 지급 이력 전혀 없음, 자사주 매입 프로그램도 없음",
-          "understandable": "✅ 전기차·ESS용 배터리를 제조해 완성차·에너지기업에 판매"
-        },
-        "valuation": "2025년 4분기 순손실로 PER 왜곡, PBR 3.4~5.5배 사이지만 이익 안정성 미확보로 안전마진 판단 불가",
-        "stage4": null
-      }
-    },
-    {
-      "market": "kr",
-      "ticker": "005380",
-      "name": "현대차",
-      "price": 404000.0,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 46.1 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "PASS",
-        "stage3_conclusion": "① 좋은 기업이고 지금 가격도 적당하다 — 매수를 고려해볼 만하다",
-        "checklist": {
-          "moat": "⚠️ E-GMP 800V 플랫폼·수소차 기술력은 있으나 테슬라·BYD와 경쟁 심화로 완전한 독점적 해자는 아님",
-          "consistent_earnings": "⚠️ 매출 4년 연속 성장했지만 2025년 영업이익 -19.5%, 순이익 -24.6%",
-          "financial_health": "✅ 차량부문 부채비율 41.8%(업계 평균 대비 우수)",
-          "shareholder_friendly": "✅ 연 최소배당 1만원 보장 + 2024~2027 3개년 4조원 자사주 매입·소각",
-          "understandable": "✅ 내연기관·전기차·수소차 제조·판매"
-        },
-        "valuation": "PBR 약 0.8~0.9배로 순자산가치 이하 거래, PER은 저점(4배대)에서 벗어나 9~11배로 상승했지만 여전히 안전마진 존재",
-        "stage4": {
-          "score": {
-            "per": 7,
-            "pbr": 8,
-            "roe": 6,
-            "financial_health": 8
-          },
-          "score_note": "ROE 약 7.5%",
-          "buy_reasons": [
-            "PBR 0.8배 내외로 순자산가치보다 저평가",
-            "최소배당 1만원 보장 + 4조원 자사주 매입·소각",
-            "매출 성장세 유지 + 부채비율 41.8%로 재무구조 견고"
-          ],
-          "risk_reasons": [
-            "2025년 순이익 -24.6% — 다음 분기 확인 필요",
-            "2024년 극단적 저평가(PER 4배대)는 지나가 추가 조정 시 더 좋은 진입가 가능",
-            "EV 경쟁 심화(테슬라·BYD)와 미국 관세 정책 불확실성"
-          ],
-          "beginner_advice": "비중 5~10%. 추가매수 신호 — PBR 0.7배 이하 재하락 또는 분기 실적 반등 확인. 손절 조건 — 매수가 대비 -15~20% 하락 또는 배당정책 축소 시.",
-          "summary": "재무건전성과 주주환원은 우수하지만 최근 수익성 둔화가 진행형이므로 분할매수로 안전마진을 확보하며 접근할 만하다."
-        }
-      }
-    },
-    {
-      "market": "us",
-      "ticker": "AMZN",
-      "name": "Amazon.com, Inc.",
-      "price": 278.09,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 65.9 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "PASS",
-        "stage3_conclusion": "① 좋은 기업이고 지금 가격도 적당하다 — 매수를 고려해볼 만하다",
-        "checklist": {
-          "moat": "✅ AWS 클라우드 1위, Prime 생태계, 물류망 규모의 경제",
-          "consistent_earnings": "⚠️ 매출 5년 연속 성장했지만 2022년 순손실 기록, 영업이익 변동성 큼",
-          "financial_health": "⚠️ 부채·현금 균형은 맞지만 AI 인프라 투자로 잉여현금흐름 급감",
-          "shareholder_friendly": "❌ 배당 전혀 없고 자사주매입도 소극적",
-          "understandable": "✅ 온라인 쇼핑몰과 클라우드 컴퓨팅(AWS)"
-        },
-        "valuation": "PER 약 21.6배(5년 평균 63배 대비 크게 낮음), PBR 5.7배도 장기 평균 하회",
-        "stage4": {
-          "score": {
-            "per": 7,
-            "pbr": 7,
-            "roe": 8,
-            "financial_health": 6
-          },
-          "score_note": "ROE 23.3%",
-          "buy_reasons": [
-            "AWS·광고 고마진 사업의 영업이익 회복세",
-            "역사적 평균 대비 낮은 밸류에이션",
-            "ROE 23%대 우량한 자본 효율성과 5년 연속 매출 성장"
-          ],
-          "risk_reasons": [
-            "AI 인프라 투자로 FCF 급감, 당분간 현금창출력 부담",
-            "무배당·소극적 자사주매입으로 주주환원 약함",
-            "forward PER 재상승 중이며 비영업 손익 변동성 재발 가능"
-          ],
-          "beginner_advice": "비중 5~10%. 추가매수 신호 — capex 대비 FCF 개선 확인 또는 조정 시 분할매수. 손절 조건 — AWS 성장률 둔화 지속 또는 부채 급증 시.",
-          "summary": "강력한 해자와 성장성을 갖춘 우량기업이지만 무배당·낮은 FCF·AI투자 부담을 고려해 분할매수로 접근하는 게 합리적이다."
-        }
-      }
-    },
-    {
-      "market": "kr",
-      "ticker": "207940",
-      "name": "삼성바이오로직스",
-      "price": 1600000.0,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 69.8 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "WAIT",
-        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
-        "checklist": {
-          "moat": "✅ 세계 최대 단일 사이트 CDMO 생산능력(62만 리터)에 FDA·EMA 다수 승인 트랙레코드",
-          "consistent_earnings": "✅ 매출 2020년 1.16조원→2025년 4.56조원, 영업이익률 25%→45%로 매년 성장",
-          "financial_health": "⚠️ 부채비율 개선 중이나 2032년까지 7.5조원 대규모 투자로 자금 부담 상당",
-          "shareholder_friendly": "❌ 2016년 상장 이후 배당 지급 이력 없음, 배당 정책 발표도 재연기",
-          "understandable": "✅ 글로벌 제약사의 바이오의약품 위탁생산(CDMO)"
-        },
-        "valuation": "PER 약 45배(2026E 32.9배), PBR 6.64배로 저평가 구간에서 적정가 구간으로 이동, 뚜렷한 안전마진 없음",
-        "stage4": null
-      }
-    },
-    {
-      "market": "us",
-      "ticker": "AVGO",
-      "name": "Broadcom Inc.",
-      "price": 422.4,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 67.6 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "WAIT",
-        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
-        "checklist": {
-          "moat": "✅ 하이퍼스케일러 이더넷 스위칭 실리콘 독점적 지위, 커스텀 AI반도체 점유율 약 60%",
-          "consistent_earnings": "⚠️ 매출은 꾸준히 증가했지만 VMware 인수 관련 상각비로 순이익 변동성 컸음",
-          "financial_health": "⚠️ 순부채 약 490억 달러로 VMware 인수 이후 레버리지 높은 편",
-          "shareholder_friendly": "✅ 15년 연속 배당 증가, 100억 달러 자사주 매입 신규 승인",
-          "understandable": "⚠️ AI/네트워킹 반도체 + 기업용 가상화 소프트웨어, 두 이질적 사업 결합"
-        },
-        "valuation": "트레일링 PER 약 61~70배로 자체 5년 평균과 비슷하거나 높음, PBR 약 20~26배로 매우 높아 안전마진 거의 없음",
-        "stage4": null
-      }
-    },
-    {
-      "market": "kr",
-      "ticker": "028260",
-      "name": "삼성물산",
-      "price": 347000.0,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 48.5 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "WAIT",
-        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
-        "checklist": {
-          "moat": "⚠️ 개별 사업(건설·상사·패션·리조트)은 해자 약하나 삼성그룹 지주회사 지위 자체가 전략적 해자",
-          "consistent_earnings": "✅ 매출·영업이익 증가 추세, 건설 업황 부진기에도 상사·패션이 상쇄해 매년 흑자",
-          "financial_health": "✅ 부채비율 2022년 84.5%→2025년 50.5%로 개선, 이자보상배율 약 119.6배",
-          "shareholder_friendly": "✅ 2026~2028 신규 주주환원정책, 최소 주당배당금 상향 및 자사주 소각",
-          "understandable": "❌ 건설·상사·패션·리조트·급식·바이오+삼성전자 지분까지 얽힌 복합 지주회사로 한 문장 설명 어려움"
-        },
-        "valuation": "PBR이 자체 5년 평균과 비슷하거나 높은 수준, 삼성전자 주가 급등에 따른 지분가치 재평가로 이미 많이 오른 상태",
-        "stage4": null
-      }
-    },
-    {
-      "market": "kr",
-      "ticker": "012450",
-      "name": "한화에어로스페이스",
-      "price": 1082000.0,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 64.3 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "WAIT",
-        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
-        "checklist": {
-          "moat": "✅ K9 자주포 세계시장 점유율 1위, 폴란드·이집트 등 다수 수출계약, 방산 특유의 높은 진입장벽",
-          "consistent_earnings": "⚠️ 최근 2~3년 K-방산 붐에 급성장 집중, 장기(다운턴 포함) 검증은 아직 부족",
-          "financial_health": "⚠️ 부채비율 225%로 높지만 수출 선수금 영향 커 순차입금비율은 순현금에 가까움",
-          "shareholder_friendly": "⚠️ 매년 배당 지급하나 현재가 대비 배당수익률 0.56%로 매우 낮음",
-          "understandable": "✅ 자주포·장갑차 등 지상무기 생산·수출과 항공엔진 정비"
-        },
-        "valuation": "PER 약 21~24배로 업종 평균보다는 낮지만 K-방산 붐 이전 자체 역사(10~15배) 대비 여전히 높음, 안전마진 불확실",
-        "stage4": null
-      }
-    },
-    {
-      "market": "us",
-      "ticker": "LLY",
-      "name": "Eli Lilly and Company",
-      "price": 1231.94,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 59.3 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "WAIT",
-        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
-        "checklist": {
-          "moat": "✅ GLP-1 비만·당뇨 치료제 미국 시장점유율 60.9%, 특허 보호 2030년대 후반까지",
-          "consistent_earnings": "✅ 매출 5년 연속 증가, 2023년 일회성 비용으로 순이익 변동성 있었으나 2025년 급반등",
-          "financial_health": "⚠️ 부채/자본비율 1.54배, 현금 넉넉하지 않으나 영업현금흐름은 충분",
-          "shareholder_friendly": "✅ 1991년부터 배당, 최근 5년 배당성장률 연 15%, 배당성향 22%로 낮아 지속가능",
-          "understandable": "✅ 당뇨·비만·항암·면역질환 치료제 개발·판매"
-        },
-        "valuation": "PER 약 38~40배(업종 중앙값의 2배 이상), PBR 약 35배로 안전마진 매우 얇음",
-        "stage4": null
-      }
-    },
-    {
-      "market": "kr",
-      "ticker": "329180",
-      "name": "HD현대중공업",
-      "price": 508000.0,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 58.8 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "WAIT",
-        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
-        "checklist": {
-          "moat": "⚠️ 글로벌 톱3 조선사·LNG선 설계력은 있으나 범용재적 성격이 강하고 중국 저가 공세 거셈",
-          "consistent_earnings": "⚠️ 2021~2022년 영업적자 후 2023년 흑자전환, 조선업 특유의 극심한 경기순환성",
-          "financial_health": "✅ 부채비율 239.9%→84.7%로 크게 개선, 이자보상배율 48배, 순현금",
-          "shareholder_friendly": "⚠️ 2025년 배당 급증했지만 직전 5년(2018~2022)은 무배당 이력",
-          "understandable": "✅ LNG선·탱커 등 선박과 엔진을 건조해 해운·에너지사에 판매"
-        },
-        "valuation": "2026년 예상 PER 26배, PBR 6~8배로 경쟁사 대비 40~80% 프리미엄, K-조선 슈퍼사이클 기대가 이미 상당 부분 반영돼 안전마진 부족",
-        "stage4": null
-      }
-    },
-    {
-      "market": "kr",
-      "ticker": "034020",
-      "name": "두산에너빌리티",
-      "price": 78400.0,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 61.7 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "WAIT",
-        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
-        "checklist": {
-          "moat": "⚠️ 가스터빈 국산화·SMR 협력 지위는 있으나 대형 프로젝트 수주 경쟁 산업이라 해자는 약함",
-          "consistent_earnings": "❌ 과거 채권단 관리까지 갔던 이력, 2025년 영업이익 -25%, ROE 1%대 (2026년 1분기는 회복 신호)",
-          "financial_health": "⚠️ 부채비율 약 125%, 단기차입금 4조원대로 재무 부담 남아있음",
-          "shareholder_friendly": "⚠️ 2013~2020년 무배당 후 2021년 재개, 현재도 배당수익률 0.6~0.7%로 미미",
-          "understandable": "✅ 발전설비(가스터빈·원전·SMR) 제조·판매"
-        },
-        "valuation": "PER 300~600배대, PBR 6~7배로 역사적 밴드 크게 상회, SMR/원전 기대가 이미 과도하게 선반영돼 안전마진 없음",
-        "stage4": null
-      }
-    },
-    {
-      "market": "us",
-      "ticker": "WMT",
-      "name": "Walmart Inc.",
-      "price": 112.66,
-      "score": 2,
-      "opinion": "매수",
-      "comment": "RSI 57.9 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "buffett_review": {
-        "stage3_verdict": "WAIT",
-        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
-        "checklist": {
-          "moat": "✅ 세계 최대 소매망과 압도적 구매력·물류 시스템의 비용 해자",
-          "consistent_earnings": "✅ 매출 꾸준히 증가, 영업이익률 개선, 순이익 견조하게 회복",
-          "financial_health": "⚠️ ROE 22~24%로 우수하지만 부채비율이 업종 중간값보다 다소 높음",
-          "shareholder_friendly": "✅ 53년 연속 배당 증액(배당왕), 자사주 매입 병행",
-          "understandable": "✅ 저렴한 가격으로 생활용품을 대량 판매하는 박리다매 사업"
-        },
-        "valuation": "PER 약 39.4배(10년 평균 대비 약 23~28% 높음), PBR 약 9.5배(10년 평균 대비 약 59% 높음), 안전마진 부족",
-        "stage4": null
+      },
+      "warren_score": {
+        "financial": 6.2,
+        "technical": 8.8,
+        "timing": 7.7,
+        "total": 7.6,
+        "verdict": "PASS",
+        "rsi": 54.3
       }
     },
     {
@@ -473,6 +143,114 @@
           "beginner_advice": "비중 5~10%(단일종목 과도 집중 지양). 추가매수 신호 — PBR 0.7배대 재하락 또는 밸류업 공약 이행 확인. 손절 조건 — 배당·자사주 정책 후퇴 또는 자산건전성 급격 악화 시.",
           "summary": "저평가 탈피가 진행 중인 우량 금융지주로 배당·자사주 매력이 크지만 규제·경기 리스크를 감안해 분할매수로 접근할 만하다."
         }
+      },
+      "warren_score": {
+        "financial": 5.5,
+        "technical": 8.8,
+        "timing": 8.5,
+        "total": 7.6,
+        "verdict": "PASS",
+        "rsi": 50.0
+      }
+    },
+    {
+      "market": "us",
+      "ticker": "NVDA",
+      "name": "NVIDIA Corporation",
+      "price": 217.55,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 57.5 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "PASS",
+        "stage3_conclusion": "① 좋은 기업이고 지금 가격도 적당하다 — 매수를 고려해볼 만하다",
+        "checklist": {
+          "moat": "✅ CUDA 생태계(개발자 500만+)와 AI 가속기 시장 약 80% 점유율로 전환비용 기반 해자가 매우 강함",
+          "consistent_earnings": "✅ 매출 FY21 $167억→FY26 $2,159억로 급증, FY23 성장 정체는 있었지만 적자 없이 흑자 유지",
+          "financial_health": "✅ 부채/자본 0.07배로 사실상 무차입, 현금성자산 $625억 vs 총부채 $114억",
+          "shareholder_friendly": "⚠️ 2026년 5월 배당 25배 인상(연 $1.00), $800억 자사주매입 신규 승인했으나 배당 역사는 짧음",
+          "understandable": "✅ AI 연산에 필수적인 GPU를 설계·판매"
+        },
+        "valuation": "트레일링 PER 약 34배(10년 평균 대비 약 37% 낮음), 다만 PBR 24~26배로 절대 수준은 높아 안전마진은 넉넉하지 않음",
+        "stage4": {
+          "score": {
+            "per": 8,
+            "pbr": 5,
+            "roe": 10,
+            "financial_health": 10
+          },
+          "score_note": "ROE 114%",
+          "buy_reasons": [
+            "데이터센터 매출 초고속 성장 지속",
+            "CUDA 락인 기반 강력한 시장 지배력(약 80%)",
+            "무차입에 가까운 재무구조와 압도적 ROE"
+          ],
+          "risk_reasons": [
+            "PBR 절대 수준이 높아 성장 둔화 시 조정 위험",
+            "AMD·구글TPU·아마존 등 커스텀 반도체 경쟁 심화",
+            "빅테크 AI 설비투자 사이클 둔화 가능성"
+          ],
+          "beginner_advice": "비중 5~10%. 추가매수 신호 — 데이터센터 매출 성장 지속 + PER이 역사평균 이하로 재조정될 때. 손절 조건 — 빅테크 AI 캡엑스 축소나 시장점유율 뚜렷한 하락 시.",
+          "summary": "압도적 지배력과 탄탄한 재무를 갖춘 우량주이나 밸류에이션 부담과 경쟁 심화 리스크를 감안해 분할매수로 접근할 만하다."
+        }
+      },
+      "warren_score": {
+        "financial": 6.8,
+        "technical": 8.3,
+        "timing": 7.2,
+        "total": 7.4,
+        "verdict": "PASS",
+        "rsi": 57.5
+      }
+    },
+    {
+      "market": "kr",
+      "ticker": "005380",
+      "name": "현대차",
+      "price": 404000.0,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 46.1 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "PASS",
+        "stage3_conclusion": "① 좋은 기업이고 지금 가격도 적당하다 — 매수를 고려해볼 만하다",
+        "checklist": {
+          "moat": "⚠️ E-GMP 800V 플랫폼·수소차 기술력은 있으나 테슬라·BYD와 경쟁 심화로 완전한 독점적 해자는 아님",
+          "consistent_earnings": "⚠️ 매출 4년 연속 성장했지만 2025년 영업이익 -19.5%, 순이익 -24.6%",
+          "financial_health": "✅ 차량부문 부채비율 41.8%(업계 평균 대비 우수)",
+          "shareholder_friendly": "✅ 연 최소배당 1만원 보장 + 2024~2027 3개년 4조원 자사주 매입·소각",
+          "understandable": "✅ 내연기관·전기차·수소차 제조·판매"
+        },
+        "valuation": "PBR 약 0.8~0.9배로 순자산가치 이하 거래, PER은 저점(4배대)에서 벗어나 9~11배로 상승했지만 여전히 안전마진 존재",
+        "stage4": {
+          "score": {
+            "per": 7,
+            "pbr": 8,
+            "roe": 6,
+            "financial_health": 8
+          },
+          "score_note": "ROE 약 7.5%",
+          "buy_reasons": [
+            "PBR 0.8배 내외로 순자산가치보다 저평가",
+            "최소배당 1만원 보장 + 4조원 자사주 매입·소각",
+            "매출 성장세 유지 + 부채비율 41.8%로 재무구조 견고"
+          ],
+          "risk_reasons": [
+            "2025년 순이익 -24.6% — 다음 분기 확인 필요",
+            "2024년 극단적 저평가(PER 4배대)는 지나가 추가 조정 시 더 좋은 진입가 가능",
+            "EV 경쟁 심화(테슬라·BYD)와 미국 관세 정책 불확실성"
+          ],
+          "beginner_advice": "비중 5~10%. 추가매수 신호 — PBR 0.7배 이하 재하락 또는 분기 실적 반등 확인. 손절 조건 — 매수가 대비 -15~20% 하락 또는 배당정책 축소 시.",
+          "summary": "재무건전성과 주주환원은 우수하지만 최근 수익성 둔화가 진행형이므로 분할매수로 안전마진을 확보하며 접근할 만하다."
+        }
+      },
+      "warren_score": {
+        "financial": 5.1,
+        "technical": 8.8,
+        "timing": 8.3,
+        "total": 7.4,
+        "verdict": "PASS",
+        "rsi": 46.1
       }
     },
     {
@@ -515,6 +293,214 @@
           "beginner_advice": "비중 5~10%(계열주 집중 리스크 고려). 추가매수 신호 — 45만원대 지지 확인 및 분기 실적 서프라이즈. 손절 조건 — 45만원 하회 지속 또는 현대차·기아 판매 급감 시.",
           "summary": "재무는 튼튼하고 가격 부담도 크지 않지만 그룹 실적에 연동되는 구조적 리스크가 있어 분할매수로 접근하는 것이 바람직하다."
         }
+      },
+      "warren_score": {
+        "financial": 5.3,
+        "technical": 8.8,
+        "timing": 8.0,
+        "total": 7.4,
+        "verdict": "PASS",
+        "rsi": 46.5
+      }
+    },
+    {
+      "market": "us",
+      "ticker": "AMZN",
+      "name": "Amazon.com, Inc.",
+      "price": 278.09,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 65.9 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "PASS",
+        "stage3_conclusion": "① 좋은 기업이고 지금 가격도 적당하다 — 매수를 고려해볼 만하다",
+        "checklist": {
+          "moat": "✅ AWS 클라우드 1위, Prime 생태계, 물류망 규모의 경제",
+          "consistent_earnings": "⚠️ 매출 5년 연속 성장했지만 2022년 순손실 기록, 영업이익 변동성 큼",
+          "financial_health": "⚠️ 부채·현금 균형은 맞지만 AI 인프라 투자로 잉여현금흐름 급감",
+          "shareholder_friendly": "❌ 배당 전혀 없고 자사주매입도 소극적",
+          "understandable": "✅ 온라인 쇼핑몰과 클라우드 컴퓨팅(AWS)"
+        },
+        "valuation": "PER 약 21.6배(5년 평균 63배 대비 크게 낮음), PBR 5.7배도 장기 평균 하회",
+        "stage4": {
+          "score": {
+            "per": 7,
+            "pbr": 7,
+            "roe": 8,
+            "financial_health": 6
+          },
+          "score_note": "ROE 23.3%",
+          "buy_reasons": [
+            "AWS·광고 고마진 사업의 영업이익 회복세",
+            "역사적 평균 대비 낮은 밸류에이션",
+            "ROE 23%대 우량한 자본 효율성과 5년 연속 매출 성장"
+          ],
+          "risk_reasons": [
+            "AI 인프라 투자로 FCF 급감, 당분간 현금창출력 부담",
+            "무배당·소극적 자사주매입으로 주주환원 약함",
+            "forward PER 재상승 중이며 비영업 손익 변동성 재발 가능"
+          ],
+          "beginner_advice": "비중 5~10%. 추가매수 신호 — capex 대비 FCF 개선 확인 또는 조정 시 분할매수. 손절 조건 — AWS 성장률 둔화 지속 또는 부채 급증 시.",
+          "summary": "강력한 해자와 성장성을 갖춘 우량기업이지만 무배당·낮은 FCF·AI투자 부담을 고려해 분할매수로 접근하는 게 합리적이다."
+        }
+      },
+      "warren_score": {
+        "financial": 4.7,
+        "technical": 7.3,
+        "timing": 7.0,
+        "total": 6.3,
+        "verdict": "PASS",
+        "rsi": 65.9
+      }
+    },
+    {
+      "market": "kr",
+      "ticker": "009150",
+      "name": "삼성전기",
+      "price": 1282000.0,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 47.6 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "WAIT",
+        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
+        "checklist": {
+          "moat": "✅ MLCC 글로벌 2위(점유율 약24%), AI서버 MLCC는 40% 점유",
+          "consistent_earnings": "✅ 2023년 다운사이클에도 영업흑자 유지, 2025년 창사 최대 실적",
+          "financial_health": "✅ 부채비율 49%, 유동비율 186%로 안정적",
+          "shareholder_friendly": "⚠️ 배당수익률 0.7~0.9%로 낮으나 5년 배당성장률 약 10%",
+          "understandable": "✅ AI서버·스마트폰용 MLCC·기판·카메라모듈 제조판매"
+        },
+        "valuation": "2026년 5월 열흘 만에 주가 2배 급등, PER 58~121배·PBR 9~15배로 전통 밴드(10~20배) 크게 상회, 안전마진 없음",
+        "stage4": null
+      },
+      "warren_score": {
+        "financial": 3.6,
+        "technical": 8.8,
+        "timing": 3.5,
+        "total": 5.3,
+        "verdict": "WAIT",
+        "rsi": 47.6
+      }
+    },
+    {
+      "market": "kr",
+      "ticker": "028260",
+      "name": "삼성물산",
+      "price": 347000.0,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 48.5 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "WAIT",
+        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
+        "checklist": {
+          "moat": "⚠️ 개별 사업(건설·상사·패션·리조트)은 해자 약하나 삼성그룹 지주회사 지위 자체가 전략적 해자",
+          "consistent_earnings": "✅ 매출·영업이익 증가 추세, 건설 업황 부진기에도 상사·패션이 상쇄해 매년 흑자",
+          "financial_health": "✅ 부채비율 2022년 84.5%→2025년 50.5%로 개선, 이자보상배율 약 119.6배",
+          "shareholder_friendly": "✅ 2026~2028 신규 주주환원정책, 최소 주당배당금 상향 및 자사주 소각",
+          "understandable": "❌ 건설·상사·패션·리조트·급식·바이오+삼성전자 지분까지 얽힌 복합 지주회사로 한 문장 설명 어려움"
+        },
+        "valuation": "PBR이 자체 5년 평균과 비슷하거나 높은 수준, 삼성전자 주가 급등에 따른 지분가치 재평가로 이미 많이 오른 상태",
+        "stage4": null
+      },
+      "warren_score": {
+        "financial": 2.8,
+        "technical": 8.8,
+        "timing": 3.5,
+        "total": 5.0,
+        "verdict": "WAIT",
+        "rsi": 48.5
+      }
+    },
+    {
+      "market": "us",
+      "ticker": "LLY",
+      "name": "Eli Lilly and Company",
+      "price": 1231.94,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 59.3 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "WAIT",
+        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
+        "checklist": {
+          "moat": "✅ GLP-1 비만·당뇨 치료제 미국 시장점유율 60.9%, 특허 보호 2030년대 후반까지",
+          "consistent_earnings": "✅ 매출 5년 연속 증가, 2023년 일회성 비용으로 순이익 변동성 있었으나 2025년 급반등",
+          "financial_health": "⚠️ 부채/자본비율 1.54배, 현금 넉넉하지 않으나 영업현금흐름은 충분",
+          "shareholder_friendly": "✅ 1991년부터 배당, 최근 5년 배당성장률 연 15%, 배당성향 22%로 낮아 지속가능",
+          "understandable": "✅ 당뇨·비만·항암·면역질환 치료제 개발·판매"
+        },
+        "valuation": "PER 약 38~40배(업종 중앙값의 2배 이상), PBR 약 35배로 안전마진 매우 얇음",
+        "stage4": null
+      },
+      "warren_score": {
+        "financial": 3.6,
+        "technical": 8.3,
+        "timing": 3,
+        "total": 5.0,
+        "verdict": "WAIT",
+        "rsi": 59.3
+      }
+    },
+    {
+      "market": "us",
+      "ticker": "WMT",
+      "name": "Walmart Inc.",
+      "price": 112.66,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 57.9 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "WAIT",
+        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
+        "checklist": {
+          "moat": "✅ 세계 최대 소매망과 압도적 구매력·물류 시스템의 비용 해자",
+          "consistent_earnings": "✅ 매출 꾸준히 증가, 영업이익률 개선, 순이익 견조하게 회복",
+          "financial_health": "⚠️ ROE 22~24%로 우수하지만 부채비율이 업종 중간값보다 다소 높음",
+          "shareholder_friendly": "✅ 53년 연속 배당 증액(배당왕), 자사주 매입 병행",
+          "understandable": "✅ 저렴한 가격으로 생활용품을 대량 판매하는 박리다매 사업"
+        },
+        "valuation": "PER 약 39.4배(10년 평균 대비 약 23~28% 높음), PBR 약 9.5배(10년 평균 대비 약 59% 높음), 안전마진 부족",
+        "stage4": null
+      },
+      "warren_score": {
+        "financial": 3.6,
+        "technical": 8.3,
+        "timing": 3,
+        "total": 5.0,
+        "verdict": "WAIT",
+        "rsi": 57.9
+      }
+    },
+    {
+      "market": "kr",
+      "ticker": "329180",
+      "name": "HD현대중공업",
+      "price": 508000.0,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 58.8 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "WAIT",
+        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
+        "checklist": {
+          "moat": "⚠️ 글로벌 톱3 조선사·LNG선 설계력은 있으나 범용재적 성격이 강하고 중국 저가 공세 거셈",
+          "consistent_earnings": "⚠️ 2021~2022년 영업적자 후 2023년 흑자전환, 조선업 특유의 극심한 경기순환성",
+          "financial_health": "✅ 부채비율 239.9%→84.7%로 크게 개선, 이자보상배율 48배, 순현금",
+          "shareholder_friendly": "⚠️ 2025년 배당 급증했지만 직전 5년(2018~2022)은 무배당 이력",
+          "understandable": "✅ LNG선·탱커 등 선박과 엔진을 건조해 해운·에너지사에 판매"
+        },
+        "valuation": "2026년 예상 PER 26배, PBR 6~8배로 경쟁사 대비 40~80% 프리미엄, K-조선 슈퍼사이클 기대가 이미 상당 부분 반영돼 안전마진 부족",
+        "stage4": null
+      },
+      "warren_score": {
+        "financial": 2.8,
+        "technical": 8.3,
+        "timing": 3,
+        "total": 4.7,
+        "verdict": "WAIT",
+        "rsi": 58.8
       }
     },
     {
@@ -537,28 +523,134 @@
         },
         "valuation": "트레일링 PER 약 26배로 자체 10년 평균(19.4배)·5년 평균(13.3배) 크게 상회, PBR도 10년 중앙값 대비 31% 높아 안전마진 부족",
         "stage4": null
+      },
+      "warren_score": {
+        "financial": 3.2,
+        "technical": 7.3,
+        "timing": 2.5,
+        "total": 4.3,
+        "verdict": "WAIT",
+        "rsi": 63.4
       }
     },
     {
       "market": "kr",
-      "ticker": "006400",
-      "name": "삼성SDI",
-      "price": 461000.0,
+      "ticker": "207940",
+      "name": "삼성바이오로직스",
+      "price": 1600000.0,
       "score": 2,
       "opinion": "매수",
-      "comment": "RSI 56.5 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "comment": "RSI 69.8 중립, 골든크로스, MACD 상승전환 → 매수 우위",
       "buffett_review": {
-        "stage3_verdict": "REJECT",
-        "stage3_conclusion": "③ 버핏 기준에 맞지 않는 기업이다 — 투자를 재고해라",
+        "stage3_verdict": "WAIT",
+        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
         "checklist": {
-          "moat": "⚠️ 각형 배터리·전고체 특허는 국내 최고 수준이나 CATL 등 중국 업체 원가 경쟁력에 밀림",
-          "consistent_earnings": "❌ 매출 정점(2023년 22.7조) 후 2025년 13.3조로 급락, 2025년 영업이익 -1.7조원 적자전환",
-          "financial_health": "⚠️ 부채비율 2021년 70%→2025년 79%로 상승, 이자비용 5년새 6배 증가",
-          "shareholder_friendly": "❌ 2025~2027년 3년간 현금배당 미실시 발표",
-          "understandable": "✅ EV·ESS·IT기기용 배터리와 전자재료 제조·판매"
+          "moat": "✅ 세계 최대 단일 사이트 CDMO 생산능력(62만 리터)에 FDA·EMA 다수 승인 트랙레코드",
+          "consistent_earnings": "✅ 매출 2020년 1.16조원→2025년 4.56조원, 영업이익률 25%→45%로 매년 성장",
+          "financial_health": "⚠️ 부채비율 개선 중이나 2032년까지 7.5조원 대규모 투자로 자금 부담 상당",
+          "shareholder_friendly": "❌ 2016년 상장 이후 배당 지급 이력 없음, 배당 정책 발표도 재연기",
+          "understandable": "✅ 글로벌 제약사의 바이오의약품 위탁생산(CDMO)"
         },
-        "valuation": "PER 약 54배로 정상 시기(15~37배) 대비 고평가, PBR 1.56배는 5년 평균 범위 내이나 PER 기준 안전마진 없음",
+        "valuation": "PER 약 45배(2026E 32.9배), PBR 6.64배로 저평가 구간에서 적정가 구간으로 이동, 뚜렷한 안전마진 없음",
         "stage4": null
+      },
+      "warren_score": {
+        "financial": 2.8,
+        "technical": 7.3,
+        "timing": 2.5,
+        "total": 4.2,
+        "verdict": "WAIT",
+        "rsi": 69.8
+      }
+    },
+    {
+      "market": "us",
+      "ticker": "AVGO",
+      "name": "Broadcom Inc.",
+      "price": 422.4,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 67.6 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "WAIT",
+        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
+        "checklist": {
+          "moat": "✅ 하이퍼스케일러 이더넷 스위칭 실리콘 독점적 지위, 커스텀 AI반도체 점유율 약 60%",
+          "consistent_earnings": "⚠️ 매출은 꾸준히 증가했지만 VMware 인수 관련 상각비로 순이익 변동성 컸음",
+          "financial_health": "⚠️ 순부채 약 490억 달러로 VMware 인수 이후 레버리지 높은 편",
+          "shareholder_friendly": "✅ 15년 연속 배당 증가, 100억 달러 자사주 매입 신규 승인",
+          "understandable": "⚠️ AI/네트워킹 반도체 + 기업용 가상화 소프트웨어, 두 이질적 사업 결합"
+        },
+        "valuation": "트레일링 PER 약 61~70배로 자체 5년 평균과 비슷하거나 높음, PBR 약 20~26배로 매우 높아 안전마진 거의 없음",
+        "stage4": null
+      },
+      "warren_score": {
+        "financial": 2.8,
+        "technical": 7.3,
+        "timing": 2.5,
+        "total": 4.2,
+        "verdict": "WAIT",
+        "rsi": 67.6
+      }
+    },
+    {
+      "market": "kr",
+      "ticker": "012450",
+      "name": "한화에어로스페이스",
+      "price": 1082000.0,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 64.3 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "WAIT",
+        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
+        "checklist": {
+          "moat": "✅ K9 자주포 세계시장 점유율 1위, 폴란드·이집트 등 다수 수출계약, 방산 특유의 높은 진입장벽",
+          "consistent_earnings": "⚠️ 최근 2~3년 K-방산 붐에 급성장 집중, 장기(다운턴 포함) 검증은 아직 부족",
+          "financial_health": "⚠️ 부채비율 225%로 높지만 수출 선수금 영향 커 순차입금비율은 순현금에 가까움",
+          "shareholder_friendly": "⚠️ 매년 배당 지급하나 현재가 대비 배당수익률 0.56%로 매우 낮음",
+          "understandable": "✅ 자주포·장갑차 등 지상무기 생산·수출과 항공엔진 정비"
+        },
+        "valuation": "PER 약 21~24배로 업종 평균보다는 낮지만 K-방산 붐 이전 자체 역사(10~15배) 대비 여전히 높음, 안전마진 불확실",
+        "stage4": null
+      },
+      "warren_score": {
+        "financial": 2.8,
+        "technical": 7.3,
+        "timing": 2.5,
+        "total": 4.2,
+        "verdict": "WAIT",
+        "rsi": 64.3
+      }
+    },
+    {
+      "market": "kr",
+      "ticker": "034020",
+      "name": "두산에너빌리티",
+      "price": 78400.0,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 61.7 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "WAIT",
+        "stage3_conclusion": "② 좋은 기업이지만 지금은 가격이 비싸다 — 더 떨어질 때를 기다려라",
+        "checklist": {
+          "moat": "⚠️ 가스터빈 국산화·SMR 협력 지위는 있으나 대형 프로젝트 수주 경쟁 산업이라 해자는 약함",
+          "consistent_earnings": "❌ 과거 채권단 관리까지 갔던 이력, 2025년 영업이익 -25%, ROE 1%대 (2026년 1분기는 회복 신호)",
+          "financial_health": "⚠️ 부채비율 약 125%, 단기차입금 4조원대로 재무 부담 남아있음",
+          "shareholder_friendly": "⚠️ 2013~2020년 무배당 후 2021년 재개, 현재도 배당수익률 0.6~0.7%로 미미",
+          "understandable": "✅ 발전설비(가스터빈·원전·SMR) 제조·판매"
+        },
+        "valuation": "PER 300~600배대, PBR 6~7배로 역사적 밴드 크게 상회, SMR/원전 기대가 이미 과도하게 선반영돼 안전마진 없음",
+        "stage4": null
+      },
+      "warren_score": {
+        "financial": 2.0,
+        "technical": 7.3,
+        "timing": 2.5,
+        "total": 3.9,
+        "verdict": "WAIT",
+        "rsi": 61.7
       }
     },
     {
@@ -581,6 +673,74 @@
         },
         "valuation": "순손실로 트레일링 PER 무의미, 선행 PER 58~67배(과거 평균 10~15배 대비 고평가), 1년 주가 +420%는 정책·투기 재료, 안전마진 전혀 없음",
         "stage4": null
+      },
+      "warren_score": {
+        "financial": 1.2,
+        "technical": 8.8,
+        "timing": 1.5,
+        "total": 3.8,
+        "verdict": "REJECT",
+        "rsi": 42.3
+      }
+    },
+    {
+      "market": "kr",
+      "ticker": "373220",
+      "name": "LG에너지솔루션",
+      "price": 355000.0,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 59.2 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "REJECT",
+        "stage3_conclusion": "③ 버핏 기준에 맞지 않는 기업이다 — 투자를 재고해라",
+        "checklist": {
+          "moat": "⚠️ 북미 생산기지 선점(IRA)과 특허·기술력은 강점이나 CATL 대비 원가경쟁력 밀림, 한국 3사 합산 점유율 15.6%까지 하락",
+          "consistent_earnings": "❌ 매출 2년 연속 감소(2023년 33.7조→2025년 23.7조), 2024년 적자, 2025년 4분기 순손실 7,725억원",
+          "financial_health": "⚠️ 부채비율 129%, 차입금비율 77%로 설비투자 부담 큼",
+          "shareholder_friendly": "❌ 2022년 상장 이후 배당 지급 이력 전혀 없음, 자사주 매입 프로그램도 없음",
+          "understandable": "✅ 전기차·ESS용 배터리를 제조해 완성차·에너지기업에 판매"
+        },
+        "valuation": "2025년 4분기 순손실로 PER 왜곡, PBR 3.4~5.5배 사이지만 이익 안정성 미확보로 안전마진 판단 불가",
+        "stage4": null
+      },
+      "warren_score": {
+        "financial": 1.6,
+        "technical": 8.3,
+        "timing": 1,
+        "total": 3.6,
+        "verdict": "REJECT",
+        "rsi": 59.2
+      }
+    },
+    {
+      "market": "kr",
+      "ticker": "006400",
+      "name": "삼성SDI",
+      "price": 461000.0,
+      "score": 2,
+      "opinion": "매수",
+      "comment": "RSI 56.5 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "buffett_review": {
+        "stage3_verdict": "REJECT",
+        "stage3_conclusion": "③ 버핏 기준에 맞지 않는 기업이다 — 투자를 재고해라",
+        "checklist": {
+          "moat": "⚠️ 각형 배터리·전고체 특허는 국내 최고 수준이나 CATL 등 중국 업체 원가 경쟁력에 밀림",
+          "consistent_earnings": "❌ 매출 정점(2023년 22.7조) 후 2025년 13.3조로 급락, 2025년 영업이익 -1.7조원 적자전환",
+          "financial_health": "⚠️ 부채비율 2021년 70%→2025년 79%로 상승, 이자비용 5년새 6배 증가",
+          "shareholder_friendly": "❌ 2025~2027년 3년간 현금배당 미실시 발표",
+          "understandable": "✅ EV·ESS·IT기기용 배터리와 전자재료 제조·판매"
+        },
+        "valuation": "PER 약 54배로 정상 시기(15~37배) 대비 고평가, PBR 1.56배는 5년 평균 범위 내이나 PER 기준 안전마진 없음",
+        "stage4": null
+      },
+      "warren_score": {
+        "financial": 1.6,
+        "technical": 8.3,
+        "timing": 1,
+        "total": 3.6,
+        "verdict": "REJECT",
+        "rsi": 56.5
       }
     }
   ],
