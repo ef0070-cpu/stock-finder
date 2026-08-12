@@ -277,6 +277,16 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="tradeModal">
+    <div class="modal-box" style="width:420px">
+      <div class="modal-header">
+        <span id="tradeModalTitle"></span>
+        <button id="tradeModalCloseBtn">닫기</button>
+      </div>
+      <div id="tradeModalBody"></div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="opinionModal">
     <div class="modal-box" style="width:460px">
       <div class="modal-header">
@@ -632,9 +642,20 @@
       return fallbackOpinion;
     }
 
+    // 웹호스팅(https) 배포본은 로컬 서버(127.0.0.1:8765)에 접근할 수 없다 — 대신
+    // GitHub Actions(.github/workflows/update.yml)가 평일 07:00·16:00(KST)에 자동으로
+    // data.js를 갱신·배포하므로, 버튼은 "새로고침"으로 최신 배포본을 다시 불러오는
+    // 용도로만 쓴다. 로컬(file:// 또는 http://127.0.0.1 개발 서버)에서는 기존 동작 유지.
+    const isHosted = location.protocol === "https:";
+
     function renderUpdatedAt() {
       document.getElementById("updatedAt").textContent =
         "마지막 업데이트: " + STOCK_DATA.updated_at;
+      if (isHosted) {
+        const btn = document.getElementById("updateBtn");
+        btn.textContent = "새로고침";
+        btn.title = "데이터는 평일 07:00·16:00(KST)에 자동 갱신됩니다. 최신 배포본을 다시 불러오려면 클릭하세요.";
+      }
     }
 
     const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -732,6 +753,103 @@
       if (e.target.id === "opinionModal") document.getElementById("opinionModal").classList.remove("active");
     });
 
+    // ── 매수/매도/추가매수 팝업 (보유종목 행 종목명 더블클릭 시) ──
+    function openTradeModal(idx) {
+      const holdings = loadHoldings();
+      const h = holdings[idx];
+      const r = getAnalysis(h.ticker);
+      const name = (r && r.name) || h.ticker;
+      const hasPrice = r && !r.error;
+      const currentPriceKrw = Math.round(toKrw(h.market, hasPrice ? r.price : h.buyPrice));
+
+      document.getElementById("tradeModalTitle").textContent = `${name} (${h.ticker})`;
+      document.getElementById("tradeModalBody").innerHTML = `
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px">
+          평균매입가 ${formatPrice(h.market, h.buyPrice)} · 보유수량 ${h.quantity.toLocaleString("ko-KR")}주
+          · 현재가 ${hasPrice ? formatPrice(h.market, r.price) : "조회 안됨"}
+        </p>
+        <div class="add-form">
+          <select id="tradeAction">
+            <option value="buy">추가매수</option>
+            <option value="sell">매도</option>
+          </select>
+          <input type="number" id="tradeQty" placeholder="수량" step="1" min="1" />
+          <input type="number" id="tradePrice" placeholder="단가 (원)" step="0.01" value="${currentPriceKrw}" />
+          <button id="tradeExecuteBtn">실행</button>
+        </div>
+        <button id="tradeDeleteBtn" class="del-btn" style="margin-top:14px">삭제 (실수로 등록한 종목 — 손익 미반영)</button>
+      `;
+      document.getElementById("tradeExecuteBtn").addEventListener("click", () => executeTrade(idx));
+      document.getElementById("tradeDeleteBtn").addEventListener("click", () => deleteHolding(idx));
+      document.getElementById("tradeModal").classList.add("active");
+    }
+    document.getElementById("tradeModalCloseBtn").addEventListener("click", () => {
+      document.getElementById("tradeModal").classList.remove("active");
+    });
+    document.getElementById("tradeModal").addEventListener("click", (e) => {
+      if (e.target.id === "tradeModal") document.getElementById("tradeModal").classList.remove("active");
+    });
+
+    // 추가매수: 기존 보유수량·평균단가와 가중평균해 새 평균매입단가를 계산하고, 매수금액만큼
+    // 현금에서 차감한다. 매도: 실현손익을 REALIZED_KEY에 기록(recordRealizedSale)하고 매도금액을
+    // 현금에 더한다 — 전량 매도되면 보유목록에서 제거.
+    function executeTrade(idx) {
+      const action = document.getElementById("tradeAction").value;
+      const qty = parseFloat(document.getElementById("tradeQty").value);
+      const priceKrw = parseFloat(document.getElementById("tradePrice").value);
+      if (!qty || qty <= 0 || isNaN(priceKrw) || priceKrw <= 0) {
+        alert("수량과 단가를 올바르게 입력하세요.");
+        return;
+      }
+
+      const holdings = loadHoldings();
+      const h = holdings[idx];
+
+      if (action === "buy") {
+        const oldBuyPriceKrw = toKrw(h.market, h.buyPrice);
+        const newQty = h.quantity + qty;
+        const newAvgKrw = (oldBuyPriceKrw * h.quantity + priceKrw * qty) / newQty;
+        h.buyPrice = h.market === "us" ? newAvgKrw / usdKrwRate : newAvgKrw;
+        h.quantity = newQty;
+        saveHoldings(holdings);
+        saveCash(loadCash() - priceKrw * qty);
+        alert(
+          `${qty.toLocaleString("ko-KR")}주를 ${formatPrice("kr", priceKrw)}에 추가매수했습니다.\n` +
+          `평균 매입단가가 ${formatPrice("kr", newAvgKrw)}(으)로 재계산됐고, 매수금액은 현금 잔고에서 차감됐습니다.`
+        );
+      } else {
+        if (qty > h.quantity) {
+          alert(`보유수량(${h.quantity.toLocaleString("ko-KR")}주)보다 많이 매도할 수 없습니다.`);
+          return;
+        }
+        const buyPriceKrw = toKrw(h.market, h.buyPrice);
+        recordRealizedSale(h.ticker, qty, buyPriceKrw, priceKrw);
+        saveCash(loadCash() + priceKrw * qty);
+        const pnl = (priceKrw - buyPriceKrw) * qty;
+        h.quantity -= qty;
+        if (h.quantity <= 0) holdings.splice(idx, 1);
+        saveHoldings(holdings);
+        alert(
+          `${qty.toLocaleString("ko-KR")}주를 ${formatPrice("kr", priceKrw)}에 매도했습니다.\n` +
+          `실현손익 ${formatPrice("kr", pnl)} — 현금 잔고에 반영됐습니다.`
+        );
+      }
+
+      document.getElementById("tradeModal").classList.remove("active");
+      renderHoldingsTab();
+    }
+
+    // 손익 계산 없이 목록에서만 제거 — 실수로 등록한 종목 정정용(현금/실현손익 미반영).
+    function deleteHolding(idx) {
+      const holdings = loadHoldings();
+      const h = holdings[idx];
+      if (!confirm(`${h.ticker}을(를) 손익 반영 없이 목록에서 삭제할까요?`)) return;
+      holdings.splice(idx, 1);
+      saveHoldings(holdings);
+      document.getElementById("tradeModal").classList.remove("active");
+      renderHoldingsTab();
+    }
+
     function renderHoldingsTab() {
       renderPortfolioSummary();
       const tbody = document.querySelector("#holdingsTable tbody");
@@ -748,31 +866,30 @@
         const tr = document.createElement("tr");
         const name = (r && r.name) || "-";
 
-        const actionBtns = `<button class="edit-btn" data-idx="${idx}">수정</button>
-            <button class="del-btn" data-idx="${idx}">삭제</button>`;
-
         const buyPriceKrw = formatPrice(h.market, h.buyPrice);
         const brokerCell = `<td>${h.broker || "-"}</td>`;
+        // 종목명 더블클릭으로 매수/매도 팝업을 연다(수정·삭제 버튼 대체).
+        const nameCell = `<td class="stock-name-cell" title="더블클릭: 매수/매도">${name}</td>`;
 
         if (!r || r.error) {
           if (liveLoading.has(h.ticker)) {
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td>${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
+              <td>${h.ticker}</td>${nameCell}${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
               <td colspan="8" class="no-data">실시간 시세 조회 중...</td>
-              <td>${actionBtns}</td>`;
+              <td></td>`;
           } else if (h.market === "us") {
             const reason = r ? r.error : "실시간 조회 대기 중";
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td>${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
+              <td>${h.ticker}</td>${nameCell}${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
               <td colspan="8" class="no-data">지표 없음 — ${reason}</td>
-              <td>${actionBtns}</td>`;
+              <td></td>`;
             ensureLiveAnalysis(h.ticker, h.market);
           } else {
             const reason = r ? r.error : "tickers.json에 등록되지 않음";
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td>${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
+              <td>${h.ticker}</td>${nameCell}${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
               <td colspan="8" class="no-data">지표 없음 — ${reason}. tickers.json에 추가 후 재실행 필요</td>
-              <td>${actionBtns}</td>`;
+              <td></td>`;
           }
         } else {
           const pnl = (r.price - h.buyPrice) * h.quantity;
@@ -789,7 +906,7 @@
             ? `매입가 대비 ${displayOpinion === "매도의견" ? "손절선(-8%) 도달" : "목표가(+15%) 도달"} · 기술적 지표는 참고: ${r.comment}`
             : r.comment;
           tr.innerHTML = `
-            <td>${h.ticker}</td><td>${name}</td>${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td><td>${formatPrice(h.market, r.price)}</td>
+            <td>${h.ticker}</td>${nameCell}${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td><td>${formatPrice(h.market, r.price)}</td>
             <td class="${pnlClass}">${formatPrice(h.market, pnl)}</td>
             <td class="${pnlClass}">${pnlPct.toFixed(2)}%</td>
             <td><span class="opinion ${opinionClass(displayOpinion)}" title="매입가 대비 손절/목표가 도달 여부가 RSI·이평선·MACD 기술적 판정보다 우선 표시됩니다">${displayOpinion}</span></td>
@@ -797,39 +914,13 @@
             <td title="매입가 대비 -8% - 현재가가 이 아래로 오면 '매도의견'으로 표시됨">${formatPrice(h.market, lv.stopLoss)}</td>
             <td title="매입가 대비 +15% - 현재가가 이 위로 오면 '익절의견'으로 표시됨">${formatPrice(h.market, lv.target)}</td>
             <td style="text-align:left">${commentText}</td>
-            <td>${actionBtns}</td>`;
+            <td></td>`;
           tr.querySelector(".opinion").addEventListener("click", () => {
             openOpinionModal(name, h.ticker, h, r, lv, displayOpinion);
           });
         }
+        tr.querySelector(".stock-name-cell").addEventListener("dblclick", () => openTradeModal(idx));
         tbody.appendChild(tr);
-      });
-
-      tbody.querySelectorAll(".del-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const holdings = loadHoldings();
-          holdings.splice(Number(btn.dataset.idx), 1);
-          saveHoldings(holdings);
-          if (editingIndex === Number(btn.dataset.idx)) exitEditMode();
-          renderHoldingsTab();
-        });
-      });
-
-      tbody.querySelectorAll(".edit-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const idx = Number(btn.dataset.idx);
-          const holdings = loadHoldings();
-          const h = holdings[idx];
-          document.getElementById("hTicker").value = h.ticker;
-          document.getElementById("hMarket").value = h.market;
-          document.getElementById("hBroker").value = h.broker || "키움증권";
-          // 저장값은 시장 원래 통화(해외=달러) 그대로라, 입력창엔 원화로 환산해서 보여준다.
-          document.getElementById("hBuyPrice").value = Math.round(toKrw(h.market, h.buyPrice));
-          document.getElementById("hQuantity").value = h.quantity;
-          editingIndex = idx;
-          document.getElementById("hAddBtn").textContent = "수정 완료";
-          document.getElementById("hCancelBtn").style.display = "";
-        });
       });
     }
 
@@ -1016,19 +1107,8 @@
       renderFinderCards();
     });
 
-    let editingIndex = null;
-
-    function exitEditMode() {
-      editingIndex = null;
-      document.getElementById("hAddBtn").textContent = "추가";
-      document.getElementById("hCancelBtn").style.display = "none";
-      document.getElementById("hTicker").value = "";
-      document.getElementById("hBroker").value = "키움증권";
-      document.getElementById("hBuyPrice").value = "";
-      document.getElementById("hQuantity").value = "";
-    }
-
-
+    // 상단 입력폼은 이제 "신규 종목 추가" 전용 — 이미 보유 중인 종목의 추가매수/매도는
+    // 종목명을 더블클릭해서 여는 매수/매도 팝업(openTradeModal)에서 처리한다.
     document.getElementById("hAddBtn").addEventListener("click", () => {
       const rawInput = document.getElementById("hTicker").value.trim();
       const ticker = resolveTicker(rawInput);
@@ -1046,64 +1126,23 @@
         alert(`"${rawInput}"을(를) 종목으로 인식할 수 없습니다. 정확한 티커(예: 005930, AAPL)를 입력하거나 목록에서 종목명을 선택하세요.`);
         return;
       }
-      // 입력창은 항상 원화 기준 — 저장은 기존처럼 시장 원래 통화(해외=달러)로 되돌려서
-      // 넣는다. 다른 계산(평가손익 등)이 전부 "저장값=원래 통화"를 전제로 하고 있어서다.
+      const existingIdx = loadHoldings().findIndex((h) => h.ticker === ticker);
+      if (existingIdx >= 0) {
+        alert("이미 보유 중인 종목입니다. 목록에서 종목명을 더블클릭해 추가매수/매도를 진행하세요.");
+        return;
+      }
+      // 입력창은 항상 원화 기준 — 저장은 기존처럼 시장 원래 통화(해외=달러)로 되돌려서 넣는다.
       const buyPrice = market === "us" ? buyPriceKrwInput / usdKrwRate : buyPriceKrwInput;
 
       const holdings = loadHoldings();
-
-      // 수정 저장 시 수량이 줄어들면 그 차이를 매도(부분매도 포함)로 처리한다 —
-      // 매도가는 현재가를 기본값으로 쓴다(별도 매도가 입력창을 만드는 대신 가벼운 방식 선택).
-      // 실현손익은 현금에 더해지고, 종합 수익률·그래프에 영구 반영된다.
-      if (editingIndex !== null) {
-        const old = holdings[editingIndex];
-        const soldQty = old.quantity - quantity;
-        let keepOldBuyPrice = false;
-        if (soldQty > 0) {
-          keepOldBuyPrice = true; // 매도로 처리되는 경우 남은 수량의 평균 매입단가는 그대로 유지
-          const r = getAnalysis(old.ticker);
-          const sellPriceKrw = r && !r.error ? toKrw(old.market, r.price) : toKrw(old.market, old.buyPrice);
-          const buyPriceKrw = toKrw(old.market, old.buyPrice);
-          recordRealizedSale(old.ticker, soldQty, buyPriceKrw, sellPriceKrw);
-          saveCash(loadCash() + sellPriceKrw * soldQty);
-          const pnl = (sellPriceKrw - buyPriceKrw) * soldQty;
-          alert(
-            `${old.ticker} ${soldQty.toLocaleString("ko-KR")}주를 ${formatPrice("kr", sellPriceKrw)}에 매도 처리했습니다.\n` +
-            `실현손익 ${formatPrice("kr", pnl)} — 현금 잔고에 반영됐습니다.` +
-            (r && !r.error ? "" : "\n(현재가를 못 가져와 매입가로 대체 계산했습니다.)")
-          );
-        }
-        const addedQty = quantity - old.quantity;
-        if (quantity <= 0) {
-          holdings.splice(editingIndex, 1);
-        } else if (keepOldBuyPrice) {
-          holdings[editingIndex] = { ticker, market, broker, buyPrice: old.buyPrice, quantity };
-        } else if (addedQty > 0) {
-          // 추가매수: 입력한 "매입가"를 새로 사는 몫의 단가로 보고 기존 수량과 가중평균한다.
-          // 매도가 현금을 늘리는 것과 대칭으로, 추가매수는 그만큼 현금에서 차감한다.
-          const oldBuyPriceKrw = toKrw(old.market, old.buyPrice);
-          const newAvgKrw = (oldBuyPriceKrw * old.quantity + buyPriceKrwInput * addedQty) / quantity;
-          const newAvgNative = market === "us" ? newAvgKrw / usdKrwRate : newAvgKrw;
-          holdings[editingIndex] = { ticker, market, broker, buyPrice: newAvgNative, quantity };
-          saveCash(loadCash() - buyPriceKrwInput * addedQty);
-          alert(
-            `${addedQty.toLocaleString("ko-KR")}주를 ${formatPrice("kr", buyPriceKrwInput)}에 추가매수 처리했습니다.\n` +
-            `평균 매입단가가 ${formatPrice("kr", newAvgKrw)}(으)로 재계산됐고, 매수금액은 현금 잔고에서 차감됐습니다.`
-          );
-        } else {
-          holdings[editingIndex] = { ticker, market, broker, buyPrice, quantity };
-        }
-      } else {
-        holdings.push({ ticker, market, broker, buyPrice, quantity });
-        saveCash(loadCash() - buyPriceKrwInput * quantity);
-      }
+      holdings.push({ ticker, market, broker, buyPrice, quantity });
       saveHoldings(holdings);
-      exitEditMode();
+      saveCash(loadCash() - buyPriceKrwInput * quantity);
+      document.getElementById("hTicker").value = "";
+      document.getElementById("hBroker").value = "키움증권";
+      document.getElementById("hBuyPrice").value = "";
+      document.getElementById("hQuantity").value = "";
       renderHoldingsTab();
-    });
-
-    document.getElementById("hCancelBtn").addEventListener("click", () => {
-      exitEditMode();
     });
 
     // run_pipeline.bat이 띄워둔 로컬 서버(server.py, 127.0.0.1:8765)의 /run을 호출해
@@ -1112,6 +1151,10 @@
     document.getElementById("updateBtn").addEventListener("click", async () => {
       const btn = document.getElementById("updateBtn");
       const status = document.getElementById("updateStatus");
+      if (isHosted) {
+        location.reload();
+        return;
+      }
       btn.disabled = true;
       status.textContent = "업데이트 중... (몇 초 걸릴 수 있습니다)";
       try {
