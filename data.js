@@ -1,5 +1,5 @@
 window.STOCK_DATA = {
-  "updated_at": "2026-08-12 08:16:44",
+  "updated_at": "2026-08-12 08:37:06",
   "results": {
     "005930": {
       "market": "kr",
@@ -73,17 +73,11 @@ window.STOCK_DATA = {
     },
     "PLTR": {
       "market": "us",
-      "price": 174.94,
-      "change_pct": -0.17,
-      "rsi": 79.2,
-      "ma5": 167.3,
-      "ma20": 139.4,
-      "macd": 10.58,
-      "macd_signal": 5.12,
-      "score": 1,
-      "opinion": "보유",
-      "comment": "RSI 79.2 과매수, 골든크로스, MACD 상승전환 → 보유 우위",
-      "name": "Palantir Technologies Inc."
+      "error": "지표 계산 결과가 유효하지 않음(NaN/Inf)"
+    },
+    "RKLB": {
+      "market": "us",
+      "error": "지표 계산 결과가 유효하지 않음(NaN/Inf)"
     }
   }
 };
