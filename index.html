@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>주식 트래커</title>
+<style>
+  body { font-family: "Malgun Gothic", sans-serif; margin: 0; padding: 20px; background: #f5f5f5; color: #222; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .updated-at { color: #777; font-size: 13px; margin-bottom: 16px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+  .tab-btn { padding: 8px 16px; border: none; background: #ddd; cursor: pointer; border-radius: 6px 6px 0 0; font-size: 14px; }
+  .tab-btn.active { background: #fff; font-weight: bold; box-shadow: 0 -2px 4px rgba(0,0,0,0.05); }
+  .tab-panel { display: none; background: #fff; padding: 16px; border-radius: 0 6px 6px 6px; }
+  .tab-panel.active { display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { background: #fafafa; color: #555; }
+  .opinion { font-weight: bold; padding: 2px 8px; border-radius: 4px; }
+  .opinion-buy { background: #ffe3e3; color: #c92a2a; }
+  .opinion-sell { background: #e3f0ff; color: #1864ab; }
+  .opinion-hold { background: #eee; color: #555; }
+  .pnl-plus { color: #c92a2a; }
+  .pnl-minus { color: #1864ab; }
+  .no-data { color: #aaa; font-style: italic; }
+  .add-form { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .add-form input { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
+  .add-form select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
+  .add-form button { padding: 6px 14px; border: none; background: #333; color: #fff; border-radius: 4px; cursor: pointer; }
+  .del-btn { padding: 4px 10px; border: none; background: #eee; color: #c92a2a; border-radius: 4px; cursor: pointer; }
+  .empty-msg { color: #999; padding: 20px 0; text-align: center; }
+</style>
+</head>
+<body>
+  <h1>주식 트래커</h1>
+  <div class="updated-at">
+    <span id="updatedAt"></span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="daily">매일 추천 종목</button>
+    <button class="tab-btn" data-tab="holdings">보유종목</button>
+  </div>
+
+  <div class="tab-panel active" id="panel-daily">
+    <table id="dailyTable">
+      <thead>
+        <tr>
+          <th>티커</th><th>종목명</th><th>시장</th><th>현재가</th><th>RSI</th>
+          <th>MA5</th><th>MA20</th><th>MACD</th><th>Signal</th>
+          <th>의견</th><th>코멘트</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="tab-panel" id="panel-holdings">
+    <div class="add-form">
+      <input type="text" id="hTicker" list="tickerSuggestions" placeholder="티커 또는 종목명 (예: 005930, 삼성전자, AAPL)" />
+      <datalist id="tickerSuggestions"></datalist>
+      <select id="hMarket">
+        <option value="kr">국내</option>
+        <option value="us">해외</option>
+      </select>
+      <input type="number" id="hBuyPrice" placeholder="매입가" step="0.01" />
+      <input type="number" id="hQuantity" placeholder="수량" step="1" />
+      <button id="hAddBtn">추가</button>
+      <button id="hCancelBtn" style="display:none">취소</button>
+    </div>
+    <table id="holdingsTable">
+      <thead>
+        <tr>
+          <th>티커</th><th>종목명</th><th>매입가</th><th>수량</th><th>현재가</th>
+          <th>평가손익</th><th>손익률</th><th>의견</th><th>코멘트</th><th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    const STOCK_DATA = window.STOCK_DATA || { updated_at: "데이터 없음 (첫 자동 업데이트 대기 중)", results: {} };
+    const HOLDINGS_KEY = "stock_app_holdings";
+
+    // 종목명 ↔ 티커 매핑 (파이프라인이 분석한 국내 종목만 대상, run_pipeline.py가 채운 name 필드 기반)
+    const nameToTicker = {};
+    for (const [ticker, r] of Object.entries(STOCK_DATA.results)) {
+      if (r && r.name) nameToTicker[r.name] = ticker;
+    }
+
+    function resolveTicker(input) {
+      return nameToTicker[input] || input;
+    }
+
+    function populateTickerSuggestions() {
+      const list = document.getElementById("tickerSuggestions");
+      list.innerHTML = "";
+      for (const [ticker, r] of Object.entries(STOCK_DATA.results)) {
+        const opt1 = document.createElement("option");
+        opt1.value = ticker;
+        opt1.label = r.name ? `${r.name}` : ticker;
+        list.appendChild(opt1);
+        if (r.name) {
+          const opt2 = document.createElement("option");
+          opt2.value = r.name;
+          opt2.label = ticker;
+          list.appendChild(opt2);
+        }
+      }
+    }
+
+    // ── 해외(US) 종목 실시간 조회: tickers.json에 아직 없는 신규 티커를 보유종목에
+    // 추가했을 때, 파이프라인 재실행 없이 브라우저가 직접 Yahoo Finance 공개 API로
+    // 최근 6개월 종가를 받아와 RSI/MA/MACD/의견을 즉시 계산한다. run_pipeline.py의
+    // indicators.py 로직과 동일한 공식을 그대로 포팅한 것 — 점수 규칙이 서로 어긋나면
+    // 안 되므로 규칙을 바꿀 때는 양쪽 다 같이 고칠 것.
+    // 국내(KR) 종목은 이 방식으로 조회할 공개 API가 마땅치 않아 여전히 파이프라인
+    // 재실행이 필요하다.
+    function jsMean(arr) {
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    function jsComputeRSI(closes, period = 14) {
+      const gains = [], losses = [];
+      for (let i = 1; i < closes.length; i++) {
+        const delta = closes[i] - closes[i - 1];
+        gains.push(Math.max(delta, 0));
+        losses.push(Math.max(-delta, 0));
+      }
+      const avgGain = jsMean(gains.slice(-period));
+      const avgLoss = jsMean(losses.slice(-period));
+      const rs = avgGain / avgLoss;
+      return 100 - 100 / (1 + rs);
+    }
+
+    function jsComputeMA(closes, window) {
+      return jsMean(closes.slice(-window));
+    }
+
+    function jsEwm(values, span) {
+      const alpha = 2 / (span + 1);
+      let ema = values[0];
+      const out = [ema];
+      for (let i = 1; i < values.length; i++) {
+        ema = alpha * values[i] + (1 - alpha) * ema;
+        out.push(ema);
+      }
+      return out;
+    }
+
+    function jsComputeMACD(closes, fast = 12, slow = 26, signal = 9) {
+      const emaFast = jsEwm(closes, fast);
+      const emaSlow = jsEwm(closes, slow);
+      const macdLine = closes.map((_, i) => emaFast[i] - emaSlow[i]);
+      const signalLine = jsEwm(macdLine, signal);
+      return [macdLine[macdLine.length - 1], signalLine[signalLine.length - 1]];
+    }
+
+    function jsScoreAndOpinion(rsi, ma5, ma20, macdLine, macdSignal) {
+      let score = 0;
+      const reasons = [];
+
+      if (rsi < 30) { score += 1; reasons.push(`RSI ${rsi.toFixed(1)} 과매도`); }
+      else if (rsi > 70) { score -= 1; reasons.push(`RSI ${rsi.toFixed(1)} 과매수`); }
+      else { reasons.push(`RSI ${rsi.toFixed(1)} 중립`); }
+
+      if (ma5 > ma20) { score += 1; reasons.push("골든크로스"); }
+      else { score -= 1; reasons.push("데드크로스"); }
+
+      if (macdLine > macdSignal) { score += 1; reasons.push("MACD 상승전환"); }
+      else { score -= 1; reasons.push("MACD 하락전환"); }
+
+      let opinion;
+      if (score >= 2) opinion = "매수";
+      else if (score <= -2) opinion = "매도";
+      else opinion = "보유";
+
+      const comment = reasons.join(", ") + ` → ${opinion} 우위`;
+      return [score, opinion, comment];
+    }
+
+    async function fetchLiveUsAnalysis(ticker) {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=6mo&interval=1d`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`실시간 조회 실패 (HTTP ${res.status})`);
+      const json = await res.json();
+      const result = json.chart && json.chart.result && json.chart.result[0];
+      if (!result) throw new Error("가격 데이터 없음");
+      const closes = (result.indicators.quote[0].close || []).filter(
+        (v) => v !== null && v !== undefined
+      );
+      if (closes.length < 30) {
+        throw new Error(`지표 계산에 필요한 데이터가 부족함 (${closes.length}일)`);
+      }
+
+      const rsi = jsComputeRSI(closes);
+      const ma5 = jsComputeMA(closes, 5);
+      const ma20 = jsComputeMA(closes, 20);
+      const [macdLine, macdSignal] = jsComputeMACD(closes);
+      const [score, opinion, comment] = jsScoreAndOpinion(rsi, ma5, ma20, macdLine, macdSignal);
+
+      return {
+        market: "us",
+        price: Math.round(closes[closes.length - 1] * 100) / 100,
+        rsi: Math.round(rsi * 10) / 10,
+        ma5: Math.round(ma5 * 10) / 10,
+        ma20: Math.round(ma20 * 10) / 10,
+        macd: Math.round(macdLine * 100) / 100,
+        macd_signal: Math.round(macdSignal * 100) / 100,
+        score,
+        opinion,
+        comment,
+      };
+    }
+
+    const liveCache = {};
+    const liveLoading = new Set();
+
+    function getAnalysis(ticker) {
+      if (liveCache[ticker]) return liveCache[ticker];
+      return STOCK_DATA.results[ticker];
+    }
+
+    function ensureLiveAnalysis(ticker, market) {
+      if (market !== "us") return; // KR은 브라우저에서 직접 조회할 공개 API가 없음
+      if (liveCache[ticker] || liveLoading.has(ticker)) return;
+      liveLoading.add(ticker);
+      fetchLiveUsAnalysis(ticker)
+        .then((result) => { liveCache[ticker] = result; })
+        .catch((e) => { liveCache[ticker] = { market: "us", error: e.message }; })
+        .finally(() => { liveLoading.delete(ticker); renderHoldingsTab(); });
+    }
+
+    function loadHoldings() {
+      try {
+        return JSON.parse(localStorage.getItem(HOLDINGS_KEY)) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveHoldings(holdings) {
+      localStorage.setItem(HOLDINGS_KEY, JSON.stringify(holdings));
+    }
+
+    function opinionClass(opinion) {
+      if (opinion === "매수") return "opinion-buy";
+      if (opinion === "매도") return "opinion-sell";
+      return "opinion-hold";
+    }
+
+    function renderUpdatedAt() {
+      document.getElementById("updatedAt").textContent =
+        "마지막 업데이트: " + STOCK_DATA.updated_at;
+    }
+
+    function renderDailyTab() {
+      const tbody = document.querySelector("#dailyTable tbody");
+      tbody.innerHTML = "";
+      const entries = Object.entries(STOCK_DATA.results);
+
+      if (entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">데이터 없음 — 첫 자동 업데이트를 기다려 주세요.</td></tr>';
+        return;
+      }
+
+      // 매수 의견 종목을 상단으로 정렬
+      entries.sort((a, b) => {
+        const scoreA = a[1].score ?? -99;
+        const scoreB = b[1].score ?? -99;
+        return scoreB - scoreA;
+      });
+
+      for (const [ticker, r] of entries) {
+        const tr = document.createElement("tr");
+        const name = r.name || "-";
+        if (r.error) {
+          tr.innerHTML = `<td>${ticker}</td><td>${name}</td><td>${r.market}</td>
+            <td colspan="8" class="no-data">데이터 없음 (${r.error})</td>`;
+        } else {
+          tr.innerHTML = `
+            <td>${ticker}</td><td>${name}</td><td>${r.market}</td><td>${r.price}</td><td>${r.rsi}</td>
+            <td>${r.ma5}</td><td>${r.ma20}</td><td>${r.macd}</td><td>${r.macd_signal}</td>
+            <td><span class="opinion ${opinionClass(r.opinion)}">${r.opinion}</span></td>
+            <td style="text-align:left">${r.comment}</td>`;
+        }
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderHoldingsTab() {
+      const tbody = document.querySelector("#holdingsTable tbody");
+      tbody.innerHTML = "";
+      const holdings = loadHoldings();
+
+      if (holdings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="empty-msg">등록된 보유종목이 없습니다.</td></tr>';
+        return;
+      }
+
+      holdings.forEach((h, idx) => {
+        const r = getAnalysis(h.ticker);
+        const tr = document.createElement("tr");
+        const name = (r && r.name) || "-";
+
+        const actionBtns = `<button class="edit-btn" data-idx="${idx}">수정</button>
+            <button class="del-btn" data-idx="${idx}">삭제</button>`;
+
+        if (!r || r.error) {
+          if (liveLoading.has(h.ticker)) {
+            tr.innerHTML = `
+              <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
+              <td colspan="5" class="no-data">실시간 시세 조회 중...</td>
+              <td>${actionBtns}</td>`;
+          } else if (h.market === "us") {
+            const reason = r ? r.error : "실시간 조회 대기 중";
+            tr.innerHTML = `
+              <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
+              <td colspan="5" class="no-data">지표 없음 — ${reason}</td>
+              <td>${actionBtns}</td>`;
+            ensureLiveAnalysis(h.ticker, h.market);
+          } else {
+            const reason = r ? r.error : "tickers.json에 등록되지 않음";
+            tr.innerHTML = `
+              <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
+              <td colspan="5" class="no-data">지표 없음 — ${reason}. tickers.json에 추가 후 재실행 필요</td>
+              <td>${actionBtns}</td>`;
+          }
+        } else {
+          const pnl = (r.price - h.buyPrice) * h.quantity;
+          const pnlPct = ((r.price - h.buyPrice) / h.buyPrice) * 100;
+          const pnlClass = pnl >= 0 ? "pnl-plus" : "pnl-minus";
+          tr.innerHTML = `
+            <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td><td>${r.price}</td>
+            <td class="${pnlClass}">${pnl.toFixed(0)}</td>
+            <td class="${pnlClass}">${pnlPct.toFixed(2)}%</td>
+            <td><span class="opinion ${opinionClass(r.opinion)}">${r.opinion}</span></td>
+            <td style="text-align:left">${r.comment}</td>
+            <td>${actionBtns}</td>`;
+        }
+        tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll(".del-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const holdings = loadHoldings();
+          holdings.splice(Number(btn.dataset.idx), 1);
+          saveHoldings(holdings);
+          if (editingIndex === Number(btn.dataset.idx)) exitEditMode();
+          renderHoldingsTab();
+        });
+      });
+
+      tbody.querySelectorAll(".edit-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const idx = Number(btn.dataset.idx);
+          const holdings = loadHoldings();
+          const h = holdings[idx];
+          document.getElementById("hTicker").value = h.ticker;
+          document.getElementById("hMarket").value = h.market;
+          document.getElementById("hBuyPrice").value = h.buyPrice;
+          document.getElementById("hQuantity").value = h.quantity;
+          editingIndex = idx;
+          document.getElementById("hAddBtn").textContent = "수정 완료";
+          document.getElementById("hCancelBtn").style.display = "";
+        });
+      });
+    }
+
+    let editingIndex = null;
+
+    function exitEditMode() {
+      editingIndex = null;
+      document.getElementById("hAddBtn").textContent = "추가";
+      document.getElementById("hCancelBtn").style.display = "none";
+      document.getElementById("hTicker").value = "";
+      document.getElementById("hBuyPrice").value = "";
+      document.getElementById("hQuantity").value = "";
+    }
+
+    document.getElementById("hAddBtn").addEventListener("click", () => {
+      const ticker = resolveTicker(document.getElementById("hTicker").value.trim());
+      const market = document.getElementById("hMarket").value;
+      const buyPrice = parseFloat(document.getElementById("hBuyPrice").value);
+      const quantity = parseFloat(document.getElementById("hQuantity").value);
+
+      if (!ticker || isNaN(buyPrice) || isNaN(quantity)) {
+        alert("티커, 매입가, 수량을 모두 입력하세요.");
+        return;
+      }
+
+      const holdings = loadHoldings();
+      if (editingIndex !== null) {
+        holdings[editingIndex] = { ticker, market, buyPrice, quantity };
+      } else {
+        holdings.push({ ticker, market, buyPrice, quantity });
+      }
+      saveHoldings(holdings);
+      exitEditMode();
+      renderHoldingsTab();
+    });
+
+    document.getElementById("hCancelBtn").addEventListener("click", () => {
+      exitEditMode();
+    });
+
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+      });
+    });
+
+    renderUpdatedAt();
+    renderDailyTab();
+    renderHoldingsTab();
+    populateTickerSuggestions();
+  </script>
+</body>
+</html>
