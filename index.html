@@ -362,15 +362,30 @@
       }
     }
 
-    // 참고용 매매 레벨 — 현재가 대비 고정 비율. 투자 조언이 아닌 대략적인 기준선.
-    function priceLevels(price) {
+    // 참고용 매매 레벨 — 투자 조언이 아닌 대략적인 기준선.
+    // ind(기술 지표: rsi/ma5/ma20)가 있으면 그 종목의 실제 추세·과열도를 반영하고,
+    // 없으면(지표 조회 실패 등) 기존 고정비율(-2%~0%/-8%/+15%)로 폴백한다.
+    function priceLevels(price, ind) {
       const round2 = (v) => Math.round(v * 100) / 100;
-      return {
-        buyLow: round2(price * 0.98),
-        buyHigh: round2(price),
-        stopLoss: round2(price * 0.92),
-        target: round2(price * 1.15),
-      };
+      if (!ind || ind.rsi == null || ind.ma20 == null || ind.ma5 == null) {
+        return {
+          buyLow: round2(price * 0.98),
+          buyHigh: round2(price),
+          stopLoss: round2(price * 0.92),
+          target: round2(price * 1.15),
+        };
+      }
+      // 손절가: 20일선(추세 지지선) -3%와 현재가 -8% 중 더 보수적인(가까운/높은) 쪽 —
+      // 추세가 아직 살아있는데 단순 -8%보다 먼저 털리는 걸 막는다.
+      const stopLoss = Math.max(round2(ind.ma20 * 0.97), round2(price * 0.85));
+      // 매수구간: 5일선(단기 지지)이 유효하면 그 지점부터, 아니면 기존 -2% 기준.
+      const buyLow = ind.ma5 < price ? round2(ind.ma5) : round2(price * 0.98);
+      const buyHigh = round2(price);
+      // 목표가: RSI 과열도에 따라 상단 목표를 조정 — 과매도(여력 많음)면 더 멀리,
+      // 과매수(이미 많이 옴)면 더 가깝게.
+      const targetPct = ind.rsi <= 40 ? 0.20 : ind.rsi >= 65 ? 0.10 : 0.15;
+      const target = round2(price * (1 + targetPct));
+      return { buyLow, buyHigh, stopLoss, target };
     }
 
     // 국내/해외 종목 가격을 원화로 통일 표시. 해외는 usdKrwRate로 환산 —
@@ -765,7 +780,7 @@
           const pnlClass = pnl >= 0 ? "pnl-plus" : "pnl-minus";
           // 매입가 기준(진입가 대비 고정) — 현재가 기준이면 손절가/목표가가 늘 현재가에서
           // 같은 비율만큼 떨어져 있어 "근처에 왔는지" 판단이 성립하지 않는다.
-          const lv = priceLevels(h.buyPrice);
+          const lv = priceLevels(h.buyPrice, r);
           const displayOpinion = positionSignal(r.price, lv, r.opinion);
           // 배지(손절/익절 신호)와 코멘트(기술적 지표)가 서로 다른 얘기를 할 수 있으므로
           // — 예: 손절선은 넘었는데 RSI/MACD는 여전히 매수 우위 — 둘 다 보여준다.
