@@ -225,11 +225,28 @@
       };
     }
 
+    // 국내/해외 종목 가격을 원화로 통일 표시. 해외는 usdKrwRate로 환산 —
+    // server.py의 /fx(실시간)가 있으면 그 값을, 없으면(정적 배포 등) 아래 기본값을 쓴다.
+    // 참고용 환산이며 투자/환전 조언이 아니다.
+    let usdKrwRate = 1400;
+
+    async function loadUsdKrwRate() {
+      try {
+        const res = await Promise.race([
+          fetch("http://127.0.0.1:8765/fx"),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 1000)),
+        ]);
+        const json = await res.json();
+        if (json.status === "ok" && json.rate) usdKrwRate = json.rate;
+      } catch (e) {
+        // 로컬 서버 없음/느림 — 기본 환율 그대로 사용
+      }
+    }
+
     function formatPrice(market, price) {
       if (price == null) return "—";
-      return market === "kr"
-        ? "₩" + Math.round(price).toLocaleString("ko-KR")
-        : "$" + price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const krw = market === "kr" ? price : price * usdKrwRate;
+      return "₩" + Math.round(krw).toLocaleString("ko-KR");
     }
 
     // ── 종목 파인더(버핏 검토) 전용 헬퍼 — candidates.js의 warren_score(0~10)/buffett_review 사용
@@ -373,23 +390,25 @@
         const actionBtns = `<button class="edit-btn" data-idx="${idx}">수정</button>
             <button class="del-btn" data-idx="${idx}">삭제</button>`;
 
+        const buyPriceKrw = formatPrice(h.market, h.buyPrice);
+
         if (!r || r.error) {
           if (liveLoading.has(h.ticker)) {
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
+              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity}</td>
               <td colspan="8" class="no-data">실시간 시세 조회 중...</td>
               <td>${actionBtns}</td>`;
           } else if (h.market === "us") {
             const reason = r ? r.error : "실시간 조회 대기 중";
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
+              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity}</td>
               <td colspan="8" class="no-data">지표 없음 — ${reason}</td>
               <td>${actionBtns}</td>`;
             ensureLiveAnalysis(h.ticker, h.market);
           } else {
             const reason = r ? r.error : "tickers.json에 등록되지 않음";
             tr.innerHTML = `
-              <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td>
+              <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity}</td>
               <td colspan="8" class="no-data">지표 없음 — ${reason}. tickers.json에 추가 후 재실행 필요</td>
               <td>${actionBtns}</td>`;
           }
@@ -399,13 +418,13 @@
           const pnlClass = pnl >= 0 ? "pnl-plus" : "pnl-minus";
           const lv = priceLevels(r.price);
           tr.innerHTML = `
-            <td>${h.ticker}</td><td>${name}</td><td>${h.buyPrice}</td><td>${h.quantity}</td><td>${r.price}</td>
-            <td class="${pnlClass}">${pnl.toFixed(0)}</td>
+            <td>${h.ticker}</td><td>${name}</td><td>${buyPriceKrw}</td><td>${h.quantity}</td><td>${formatPrice(h.market, r.price)}</td>
+            <td class="${pnlClass}">${formatPrice(h.market, pnl)}</td>
             <td class="${pnlClass}">${pnlPct.toFixed(2)}%</td>
             <td><span class="opinion ${opinionClass(r.opinion)}">${r.opinion}</span></td>
-            <td title="현재가 대비 -2%~0% 구간 - 참고용, 투자 조언 아님">${lv.buyLow} ~ ${lv.buyHigh}</td>
-            <td title="현재가 대비 -8% - 참고용, 투자 조언 아님">${lv.stopLoss}</td>
-            <td title="현재가 대비 +15% - 참고용, 투자 조언 아님">${lv.target}</td>
+            <td title="현재가 대비 -2%~0% 구간 - 참고용, 투자 조언 아님">${formatPrice(h.market, lv.buyLow)} ~ ${formatPrice(h.market, lv.buyHigh)}</td>
+            <td title="현재가 대비 -8% - 참고용, 투자 조언 아님">${formatPrice(h.market, lv.stopLoss)}</td>
+            <td title="현재가 대비 +15% - 참고용, 투자 조언 아님">${formatPrice(h.market, lv.target)}</td>
             <td style="text-align:left">${r.comment}</td>
             <td>${actionBtns}</td>`;
         }
@@ -706,10 +725,10 @@
     });
 
     renderUpdatedAt();
-    renderHoldingsTab();
     populateTickerSuggestions();
     renderFinderCalendar();
     updateBuyPriceUnit();
+    loadUsdKrwRate().then(renderHoldingsTab);
   </script>
 </body>
 </html>

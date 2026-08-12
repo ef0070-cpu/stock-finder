@@ -22,6 +22,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._cors()
         self.end_headers()
 
+    def _json(self, status, payload):
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self._cors()
+        self.end_headers()
+        self.wfile.write(body)
+
     def _serve_file(self, filename, content_type):
         try:
             with open(filename, "rb") as f:
@@ -66,21 +74,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # tickers.json에 아직 없는 해외 신규 티커를 보유종목에 추가했을 때 사용.
             ticker = query.get("ticker", [""])[0]
             try:
-                result = run_pipeline.analyze_ticker("us", ticker)
-                body = json.dumps(
-                    {"status": "ok", "result": result}, ensure_ascii=False
-                ).encode("utf-8")
-                status = 200
+                self._json(200, {"status": "ok", "result": run_pipeline.analyze_ticker("us", ticker)})
             except Exception as e:
-                body = json.dumps(
-                    {"status": "error", "message": str(e)}, ensure_ascii=False
-                ).encode("utf-8")
-                status = 500
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self._cors()
-            self.end_headers()
-            self.wfile.write(body)
+                self._json(500, {"status": "error", "message": str(e)})
+            return
+
+        if path == "/fx":
+            # 해외 종목 가격을 원화로 환산해 표시할 때 쓰는 참고 환율.
+            try:
+                self._json(200, {"status": "ok", "rate": run_pipeline.get_usd_krw_rate()})
+            except Exception as e:
+                self._json(500, {"status": "error", "message": str(e)})
             return
 
         if path != "/run":
@@ -91,22 +95,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         try:
             run_pipeline.main()
-            body = json.dumps({"status": "ok"}).encode("utf-8")
-            status = 200
+            self._json(200, {"status": "ok"})
         except SystemExit:
-            body = json.dumps(
-                {"status": "error", "message": "tickers.json에 등록된 티커가 없음"}
-            ).encode("utf-8")
-            status = 500
+            self._json(500, {"status": "error", "message": "tickers.json에 등록된 티커가 없음"})
         except Exception as e:
-            body = json.dumps({"status": "error", "message": str(e)}).encode("utf-8")
-            status = 500
-
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self._cors()
-        self.end_headers()
-        self.wfile.write(body)
+            self._json(500, {"status": "error", "message": str(e)})
 
 
 def main():

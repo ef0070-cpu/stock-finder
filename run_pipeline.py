@@ -33,6 +33,11 @@ def fetch_us_prices(ticker: str) -> pd.Series:
     return df["Close"].astype(float)
 
 
+def get_usd_krw_rate() -> float:
+    """해외 종목 가격을 원화로 환산해 보여줄 때 쓰는 참고 환율(투자 조언 아님)."""
+    return float(yf.Ticker("KRW=X").fast_info["lastPrice"])
+
+
 def analyze_ticker(market: str, ticker: str) -> dict:
     closes = fetch_kr_prices(ticker) if market == "kr" else fetch_us_prices(ticker)
     if len(closes) < 30:
