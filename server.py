@@ -5,10 +5,14 @@ import http.server
 import json
 import re
 import socketserver
+import subprocess
+import sys
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 
 import run_pipeline
+
+discover_process = None
 
 PORT = 8765
 
@@ -57,6 +61,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if path in ("/discover_progress", "/discover_progress.html"):
             self._serve_file("discover_progress.html", "text/html; charset=utf-8")
+            return
+
+        if path == "/discover":
+            # index.html의 "종목 발굴 시작" 버튼이 호출한다. discover.py(1~4단계)를
+            # 백그라운드 서브프로세스로 띄우고 즉시 응답한다 — 진행상황은
+            # discover_progress.json/.html이 별도로 폴링해 보여준다.
+            global discover_process
+            if discover_process is not None and discover_process.poll() is None:
+                self._json(200, {"status": "already_running"})
+                return
+            discover_process = subprocess.Popen([sys.executable, "discover.py"])
+            self._json(200, {"status": "started"})
             return
 
         if path == "/report":

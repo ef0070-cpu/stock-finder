@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>종목 발굴 파이프라인 진행 상황</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --card: #171d2e;
+    --border: #2a3348;
+    --text: #e8ebf3;
+    --muted: #8a92a8;
+    --accent: #4f8cff;
+    --good: #35c46a;
+    --bad: #ef5a5a;
+    --warn: #f2b84b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { font-size: 20px; margin: 0 0 20px; }
+
+  /* ---------- 에이전트 애니메이션 ---------- */
+  .agents {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .agent {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 12px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .3s ease;
+  }
+  .agent.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .agent.done { border-color: var(--good); }
+  .agent-name { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+  .agent-role { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+  .stage-area {
+    height: 84px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .person {
+    font-size: 34px;
+    position: relative;
+    z-index: 2;
+    transform-origin: 50% 100%;
+  }
+  .prop {
+    font-size: 22px;
+    position: absolute;
+    z-index: 3;
+  }
+  .agent-status {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .agent-status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+  .agent.active .agent-status .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+  .agent.done .agent-status .dot { background: var(--good); }
+
+  /* 대기 상태: 살짝 숨쉬는 정도만 */
+  .agent.idle .person { animation: breathe 3s ease-in-out infinite; }
+
+  /* 1. 스카우트 - 돋보기로 캔들차트 훑기 */
+  .agent.active#agentScout .person { animation: bob 1s ease-in-out infinite; }
+  .agent.active#agentScout .prop.lens { animation: scan-x 1.6s ease-in-out infinite; }
+  .candles { display: flex; align-items: flex-end; gap: 3px; height: 40px; }
+  .candles span {
+    width: 6px;
+    background: var(--accent);
+    border-radius: 2px;
+    opacity: .55;
+  }
+  .agent.active .candles span { animation: growbar 1.4s ease-in-out infinite; }
+
+  /* 2. 애널리스트 - 추세선 스캔 */
+  .agent.active#agentAnalyst .person { animation: bob 1.1s ease-in-out infinite; }
+  .chart-line {
+    width: 76px;
+    height: 40px;
+  }
+  .chart-line path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2.5;
+    stroke-dasharray: 140;
+    stroke-dashoffset: 140;
+  }
+  .agent.active .chart-line path { animation: draw 1.8s ease-in-out infinite; }
+
+  /* 3. 버핏 심사역 - 문서 스캔 */
+  .agent.active#agentBuffett .person { animation: bob 1.3s ease-in-out infinite; }
+  .doc {
+    width: 46px;
+    height: 56px;
+    background: #232b40;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    position: relative;
+    padding: 6px 6px;
+  }
+  .doc .line { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 5px; }
+  .doc .scanbar {
+    position: absolute;
+    left: 0; right: 0;
+    height: 8px;
+    background: linear-gradient(90deg, transparent, rgba(79,140,255,.5), transparent);
+    top: 4px;
+  }
+  .agent.active .doc .scanbar { animation: scan-y-doc 2.2s ease-in-out infinite; }
+
+  /* 4. 최종 결정관 - 도장 찍기 */
+  .agent.active#agentFinal .person { animation: bob 1.2s ease-in-out infinite; }
+  .stampzone { position: relative; width: 50px; height: 40px; }
+  .paper {
+    position: absolute;
+    bottom: 0; left: 4px;
+    width: 42px; height: 28px;
+    background: #232b40;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+  .stamp {
+    position: absolute;
+    top: -2px; left: 14px;
+    font-size: 20px;
+    transform-origin: 50% 0%;
+  }
+  .agent.active .stamp { animation: stamp 1.6s ease-in-out infinite; }
+
+  .agent-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+  @keyframes bob { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-3px) rotate(-4deg); } }
+  @keyframes scan-x { 0%,100% { transform: translate(-16px, 6px) rotate(-8deg); } 50% { transform: translate(16px, 6px) rotate(8deg); } }
+  @keyframes growbar {
+    0%, 100% { height: 40%; }
+    50% { height: 90%; }
+  }
+  @keyframes draw {
+    0% { stroke-dashoffset: 140; }
+    60% { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: 0; }
+  }
+  @keyframes scan-y-doc {
+    0% { top: 4px; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 44px; opacity: 0; }
+  }
+  @keyframes stamp {
+    0%, 60%, 100% { transform: translateY(0) rotate(0deg); }
+    75% { transform: translateY(14px) rotate(-10deg); }
+    85% { transform: translateY(0) rotate(0deg); }
+  }
+  @keyframes pulse { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
+
+  /* ---------- 진행 정보 대시보드 ---------- */
+  .bar-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .bar-track {
+    background: #0a0e18;
+    border-radius: 8px;
+    height: 16px;
+    overflow: hidden;
+    margin-top: 10px;
+  }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #7db6ff);
+    width: 0%;
+    transition: width .3s ease;
+  }
+  .bar-label { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; }
+  .cards { display: flex; gap: 12px; margin-bottom: 20px; }
+  .card {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .card .num { font-size: 26px; font-weight: 700; }
+  .card .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .current {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .current b { color: var(--text); }
+  ul.log { list-style: none; margin: 0; padding: 0; }
+  ul.log li {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  ul.log li:last-child { border-bottom: none; }
+  .tag { padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+  .tag.buy { background: rgba(53,196,106,.15); color: var(--good); }
+  .tag.hold { background: rgba(242,184,75,.15); color: var(--warn); }
+  .tag.sell { background: rgba(239,90,90,.15); color: var(--bad); }
+  .tag.fail { background: rgba(239,90,90,.15); color: var(--bad); }
+  .done-banner {
+    background: rgba(53,196,106,.12);
+    border: 1px solid var(--good);
+    color: var(--good);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+    font-size: 15px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+  <h1>종목 발굴 파이프라인 진행 상황</h1>
+
+  <div id="doneBanner" class="done-banner"></div>
+
+  <div class="agents">
+    <div id="agentScout" class="agent idle">
+      <div class="agent-name">스카우트</div>
+      <div class="agent-role">1단계 · 종목 발굴</div>
+      <div class="stage-area">
+        <div class="candles">
+          <span style="height:30%"></span><span style="height:55%"></span>
+          <span style="height:40%"></span><span style="height:70%"></span>
+          <span style="height:50%"></span>
+        </div>
+        <div class="person" style="position:absolute; left:6px; bottom:-6px;">🧑‍💼</div>
+        <div class="prop lens" style="position:absolute; top:14px;">🔍</div>
+      </div>
+      <div class="agent-status"><span class="dot"></span><span id="scoutStatus">대기 중</span></div>
+    </div>
+
+    <div id="agentAnalyst" class="agent idle">
+      <div class="agent-name">애널리스트</div>
+      <div class="agent-role">2단계 · 기술적 지표 분석</div>
+      <div class="stage-area">
+        <svg class="chart-line" viewBox="0 0 76 40">
+          <path d="M2,32 L16,20 L30,26 L44,10 L58,16 L74,4" />
+        </svg>
+        <div class="person" style="position:absolute; right:2px; bottom:-6px;">🧑‍🔬</div>
+      </div>
+      <div class="agent-status"><span class="dot"></span><span id="analystStatus">대기 중</span></div>
+    </div>
+
+    <div id="agentBuffett" class="agent idle">
+      <div class="agent-name">버핏 심사역</div>
+      <div class="agent-role">3단계 · 워런버핏 검토</div>
+      <div class="stage-area">
+        <div class="doc">
+          <div class="line" style="width:80%"></div>
+          <div class="line" style="width:60%"></div>
+          <div class="line" style="width:70%"></div>
+          <div class="line" style="width:45%"></div>
+          <div class="scanbar"></div>
+        </div>
+        <div class="person" style="position:absolute; left:2px; bottom:-6px;">🧑‍⚖️</div>
+      </div>
+      <div class="agent-status"><span class="dot"></span><span id="buffettStatus">대기 중</span></div>
+    </div>
+
+    <div id="agentFinal" class="agent idle">
+      <div class="agent-name">최종 결정관</div>
+      <div class="agent-role">4단계 · 최종 결정의견</div>
+      <div class="stage-area">
+        <div class="stampzone">
+          <div class="paper"></div>
+          <div class="stamp">🖋️</div>
+        </div>
+        <div class="person" style="position:absolute; right:2px; bottom:-6px;">🧑‍💻</div>
+      </div>
+      <div class="agent-status"><span class="dot"></span><span id="finalStatus">대기 중</span></div>
+    </div>
+  </div>
+
+  <div class="bar-wrap">
+    <div class="bar-label">
+      <span>2단계 분석 진행률</span>
+      <span id="barText">0 / 0</span>
+    </div>
+    <div class="bar-track"><div id="barFill" class="bar-fill"></div></div>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div id="candCount" class="num">0</div><div class="label">1단계 후보 확보</div></div>
+    <div class="card"><div id="buyFound" class="num">0</div><div class="label">매수 의견 발견</div></div>
+    <div class="card"><div id="finalPassed" class="num">-</div><div class="label">최종 선정 (시장별 1개)</div></div>
+  </div>
+
+  <div class="current">현재 처리 중: <b id="currentTicker">대기 중...</b></div>
+
+  <div class="bar-wrap">
+    <div class="bar-label">
+      <span>3~4단계 워런 버핏 리뷰 진행률</span>
+      <span id="reviewBarText">0 / 0</span>
+    </div>
+    <div class="bar-track"><div id="reviewBarFill" class="bar-fill"></div></div>
+  </div>
+
+  <div class="current">리뷰 중: <b id="reviewCurrent">대기 중...</b></div>
+
+  <div class="bar-wrap">
+    <div class="bar-label"><span>최근 처리 내역</span><span></span></div>
+    <ul id="log" class="log"></ul>
+  </div>
+
+<script>
+const OPINION_CLASS = { "매수": "buy", "보유": "hold", "매도": "sell" };
+
+function setAgentState(el, statusEl, state, activeLabel, doneLabel) {
+  el.classList.remove("idle", "active", "done");
+  if (state === "active") {
+    el.classList.add("active");
+    if (statusEl) statusEl.textContent = activeLabel;
+  } else if (state === "done") {
+    el.classList.add("done");
+    if (statusEl) statusEl.textContent = doneLabel;
+  } else {
+    el.classList.add("idle");
+    if (statusEl) statusEl.textContent = "대기 중";
+  }
+}
+
+function render(state) {
+  const afterStage = (n) => state.stage === "done" || (typeof state.stage === "number" && state.stage > n);
+  const scoutState = state.stage === 1 ? "active" : (afterStage(1) ? "done" : "idle");
+  const analystState = state.stage === 2 ? "active" : (afterStage(2) ? "done" : "idle");
+  const buffettState = state.stage === 3 ? "active" : (afterStage(3) ? "done" : "idle");
+  const finalState = state.stage === 4 ? "active" : (state.stage === "done" ? "done" : "idle");
+
+  setAgentState(
+    document.getElementById("agentScout"),
+    document.getElementById("scoutStatus"),
+    scoutState,
+    "스크리닝 중...",
+    "발굴 완료 ✓"
+  );
+  setAgentState(
+    document.getElementById("agentAnalyst"),
+    document.getElementById("analystStatus"),
+    analystState,
+    "지표 분석 중...",
+    "분석 완료 ✓"
+  );
+  setAgentState(
+    document.getElementById("agentBuffett"),
+    document.getElementById("buffettStatus"),
+    buffettState,
+    "체크리스트 검토 중...",
+    "검토 완료 ✓"
+  );
+  setAgentState(
+    document.getElementById("agentFinal"),
+    document.getElementById("finalStatus"),
+    finalState,
+    "보고서 작성 중...",
+    "완료 ✓"
+  );
+
+  document.getElementById("candCount").textContent = state.candidates_found || 0;
+
+  const total = state.total_to_analyze || 0;
+  const analyzed = state.analyzed || 0;
+  const pct = total ? Math.round((analyzed / total) * 100) : 0;
+  document.getElementById("barFill").style.width = pct + "%";
+  document.getElementById("barText").textContent = analyzed + " / " + total;
+
+  document.getElementById("buyFound").textContent = state.buy_found || 0;
+  document.getElementById("finalPassed").textContent =
+    state.final_passed === null || state.final_passed === undefined ? "-" : state.final_passed;
+
+  const reviewTotal = state.review_total || 0;
+  const reviewDone = state.review_done || 0;
+  const reviewPct = reviewTotal ? Math.round((reviewDone / reviewTotal) * 100) : 0;
+  document.getElementById("reviewBarFill").style.width = reviewPct + "%";
+  document.getElementById("reviewBarText").textContent = reviewDone + " / " + reviewTotal;
+  const reviewCur = state.review_current;
+  document.getElementById("reviewCurrent").textContent = reviewCur
+    ? "[" + reviewCur.market + "] " + reviewCur.name + " (" + reviewCur.ticker + ")"
+    : (afterStage(3) ? "완료" : "대기 중...");
+
+  const cur = state.current;
+  document.getElementById("currentTicker").textContent = cur
+    ? "[" + cur.market + "] " + cur.ticker
+    : (state.done ? "완료" : "대기 중...");
+
+  const log = document.getElementById("log");
+  log.innerHTML = "";
+  (state.recent || []).forEach((item) => {
+    const li = document.createElement("li");
+    const left = document.createElement("span");
+    left.textContent = "[" + item.market + "] " + item.ticker;
+    const right = document.createElement("span");
+    if (item.ok) {
+      const cls = OPINION_CLASS[item.opinion] || "hold";
+      right.innerHTML = '<span class="tag ' + cls + '">' + item.opinion + "</span>";
+    } else {
+      right.innerHTML = '<span class="tag fail">조회 실패</span>';
+    }
+    li.appendChild(left);
+    li.appendChild(right);
+    log.appendChild(li);
+  });
+
+  const banner = document.getElementById("doneBanner");
+  if (state.done) {
+    banner.style.display = "block";
+    banner.innerHTML =
+      "완료! 시장별 최고 후보 " + (state.final_passed ?? 0) + "개의 워런 버핏 검토까지 끝났습니다. candidates.json에 저장됨. " +
+      '<a href="/report" target="_blank" style="color:inherit;text-decoration:underline;">발굴 보고서 열기 →</a>';
+  } else {
+    banner.style.display = "none";
+  }
+}
+
+async function poll() {
+  try {
+    const res = await fetch("/discover_progress.json", { cache: "no-store" });
+    if (res.ok) render(await res.json());
+  } catch (e) {
+    // 서버 준비 전이거나 일시적 오류 - 다음 폴링에서 재시도
+  }
+}
+
+poll();
+setInterval(poll, 1000);
+</script>
+</body>
+</html>

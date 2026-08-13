@@ -86,6 +86,13 @@
   }
   .cal-header button:hover { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
   .cal-header span { font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+  .cal-header button#discoverStartBtn {
+    width: auto; height: auto; margin-left: auto; padding: 7px 14px; border: none;
+    border-radius: var(--radius-sm); background: var(--primary); color: #fff; font-weight: 600; font-size: 13px;
+  }
+  .cal-header button#discoverStartBtn:hover { background: var(--primary-hover); color: #fff; }
+  .cal-header button#discoverStartBtn:disabled { opacity: 0.6; cursor: default; }
+  #discoverStatus { font-size: 12px; color: var(--text-muted); font-weight: 400; }
   .cal-grid {
     display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
     background: var(--border-soft); border: 1px solid var(--border-soft); border-radius: var(--radius-md); overflow: hidden;
@@ -233,6 +240,8 @@
       <button id="finderCalPrevBtn">‹</button>
       <span id="finderCalMonthLabel"></span>
       <button id="finderCalNextBtn">›</button>
+      <button id="discoverStartBtn" title="국내·미국 시장에서 오늘의 최고 후보 1종목씩을 찾아 워런 버핏 체크리스트까지 자동 검토합니다 (로컬 서버 필요)">종목 발굴 시작</button>
+      <span id="discoverStatus"></span>
     </div>
     <div class="cal-grid" id="finderCalGrid"></div>
   </div>
@@ -662,6 +671,9 @@
         const btn = document.getElementById("updateBtn");
         btn.textContent = "새로고침";
         btn.title = "데이터는 평일 07:00(KST)에 자동 갱신됩니다. 최신 배포본을 다시 불러오려면 클릭하세요.";
+        // 종목 발굴은 로컬 서버(discover.py)가 있어야 동작 — 웹호스팅에서는 항상
+        // 실패할 버튼을 보여주는 대신 아예 숨긴다.
+        document.getElementById("discoverStartBtn").style.display = "none";
       }
     }
 
@@ -1028,6 +1040,29 @@
     });
     document.getElementById("finderModal").addEventListener("click", (e) => {
       if (e.target.id === "finderModal") document.getElementById("finderModal").classList.remove("active");
+    });
+
+    // 종목 발굴 시작 — 로컬 서버(server.py)의 /discover를 호출해 discover.py를
+    // 백그라운드로 실행시키고, 진행상황 창(discover_progress.html)을 새 탭으로 연다.
+    // 로컬 서버가 떠 있을 때만 동작한다(run_pipeline.bat 필요) — 웹호스팅 버전 미지원.
+    document.getElementById("discoverStartBtn").addEventListener("click", async () => {
+      const btn = document.getElementById("discoverStartBtn");
+      const status = document.getElementById("discoverStatus");
+      btn.disabled = true;
+      status.textContent = "시작하는 중...";
+      try {
+        const res = await fetch("http://127.0.0.1:8765/discover");
+        const json = await res.json();
+        if (json.status === "already_running") {
+          status.textContent = "이미 실행 중입니다.";
+        } else {
+          status.textContent = "실행 중 — 진행상황 창을 확인하세요.";
+        }
+        window.open("http://127.0.0.1:8765/discover_progress.html", "_blank");
+      } catch (e) {
+        status.textContent = "로컬 서버에 연결할 수 없습니다 — run_pipeline.bat을 먼저 실행해 두세요.";
+      }
+      btn.disabled = false;
     });
 
     function renderFinderCards() {
