@@ -459,6 +459,11 @@
     // (실측 확인됨), 로컬 서버(server.py의 /quote, run_pipeline.analyze_ticker 재사용)를
     // 경유한다 — run_pipeline.bat이 켜져 있을 때만 동작한다.
     async function fetchLiveUsAnalysis(ticker) {
+      // 웹호스팅(https) 배포본은 로컬 프록시 서버에 접근할 수 없어 이 조회가 항상 실패한다
+      // — 애초에 시도하지 않고 실제 원인과 해결책을 바로 안내한다.
+      if (isHosted) {
+        throw new Error("웹호스팅 버전은 미등록 종목의 실시간 조회를 지원하지 않음 — tickers.json에 추가 후 다음 자동 갱신(평일 07:00·16:00)을 기다려 주세요");
+      }
       let json;
       try {
         const res = await fetch(`http://127.0.0.1:8765/quote?ticker=${encodeURIComponent(ticker)}`);
