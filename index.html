@@ -75,6 +75,7 @@
   .opinion-buy { background: var(--buy-soft); color: var(--buy); }
   .opinion-sell { background: var(--sell-soft); color: var(--sell); }
   .opinion-hold { background: var(--hold-soft); color: var(--hold); }
+  .opinion-partial { background: var(--warn-soft); color: var(--warn); }
   .pnl-plus { color: var(--buy); font-weight: 600; }
   .pnl-minus { color: var(--sell); font-weight: 600; }
   .no-data { color: var(--text-faint); font-style: italic; }
@@ -636,6 +637,7 @@
     function opinionClass(opinion) {
       if (opinion === "매수" || opinion === "익절의견") return "opinion-buy";
       if (opinion === "매도" || opinion === "매도의견") return "opinion-sell";
+      if (opinion === "일부익절") return "opinion-partial";
       return "opinion-hold";
     }
 
@@ -734,19 +736,35 @@
           </div>`;
       }
 
-      html += `
-        <div class="buffett-section">
-          <div class="buffett-section-title">기술적 지표는 어떤가요? (참고용)</div>
-          <ul class="buffett-list">
-            <li>${beginnerRSI(r.rsi)}</li>
-            <li>${beginnerMA(r.ma5, r.ma20)}</li>
-            <li>${beginnerMACD(r.macd, r.macd_signal)}</li>
-          </ul>
-          <p style="font-size:13px;color:var(--text-muted);margin-top:10px;line-height:1.5">
-            이 3개 신호를 하나씩 점수로 매겨(좋으면 +1점, 나쁘면 -1점) 합산한 게 <b>${r.score}점</b>이고,
-            <b>+2점 이상이면 매수, -2점 이하면 매도, 그 사이면 보유</b>로 판정해요. 지금 기술적 판정은 "${r.opinion}"이에요.
-          </p>
-        </div>`;
+      if (r.llm_analysis) {
+        html += `
+          <div class="buffett-section">
+            <div class="buffett-section-title">AI 애널리스트 분석</div>
+            <p style="font-size:13px;color:var(--text-muted);line-height:1.5">${escapeHtml(r.llm_analysis)}</p>
+          </div>`;
+        if (r.llm_strategy) {
+          html += `
+            <div class="buffett-section">
+              <div class="buffett-section-title">대응 전략</div>
+              <p style="font-size:13px;color:var(--text-muted);line-height:1.5">${escapeHtml(r.llm_strategy)}</p>
+            </div>`;
+        }
+      } else {
+        html += `
+          <div class="buffett-section">
+            <div class="buffett-section-title">기술적 지표는 어떤가요? (참고용)</div>
+            <ul class="buffett-list">
+              <li>${beginnerRSI(r.rsi)}</li>
+              <li>${beginnerMA(r.ma5, r.ma20)}</li>
+              <li>${beginnerMACD(r.macd, r.macd_signal)}</li>
+            </ul>
+            ${r.score != null ? `
+            <p style="font-size:13px;color:var(--text-muted);margin-top:10px;line-height:1.5">
+              이 3개 신호를 하나씩 점수로 매겨(좋으면 +1점, 나쁘면 -1점) 합산한 게 <b>${r.score}점</b>이고,
+              <b>+2점 이상이면 매수, -2점 이하면 매도, 그 사이면 보유</b>로 판정해요. 지금 기술적 판정은 "${r.opinion}"이에요.
+            </p>` : ""}
+          </div>`;
+      }
 
       document.getElementById("opinionModalBody").innerHTML = html;
       document.getElementById("opinionModal").classList.add("active");

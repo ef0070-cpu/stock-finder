@@ -28,6 +28,8 @@ jobs:
       - run: pip install -r requirements.txt
 
       - run: python run_pipeline.py
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
       - name: Commit data.js if changed
         run: |

@@ -7,7 +7,8 @@ import pandas as pd
 import yfinance as yf
 from pykrx import stock as pykrx_stock
 
-from indicators import compute_macd, compute_ma, compute_rsi, score_and_opinion
+from indicators import compute_bollinger, compute_macd, compute_ma, compute_rsi, compute_stochastic
+from llm_opinion import generate_opinion
 
 TICKERS_FILE = "tickers.json"
 OUTPUT_FILE = "data.js"
@@ -15,7 +16,7 @@ HISTORY_JSON_FILE = "history.json"
 HISTORY_JS_FILE = "history.js"
 
 
-def fetch_kr_prices(ticker: str) -> pd.Series:
+def fetch_kr_ohlc(ticker: str) -> pd.DataFrame:
     end = datetime.now()
     start = end - timedelta(days=120)
     df = pykrx_stock.get_market_ohlcv(
@@ -23,14 +24,18 @@ def fetch_kr_prices(ticker: str) -> pd.Series:
     )
     if df.empty:
         raise ValueError("가격 데이터 없음")
-    return df["종가"].astype(float)
+    return df.rename(columns={"종가": "close", "고가": "high", "저가": "low"})[
+        ["close", "high", "low"]
+    ].astype(float)
 
 
-def fetch_us_prices(ticker: str) -> pd.Series:
+def fetch_us_ohlc(ticker: str) -> pd.DataFrame:
     df = yf.Ticker(ticker).history(period="6mo", interval="1d")
     if df.empty:
         raise ValueError("가격 데이터 없음")
-    return df["Close"].astype(float)
+    return df.rename(columns={"Close": "close", "High": "high", "Low": "low"})[
+        ["close", "high", "low"]
+    ].astype(float)
 
 
 def get_usd_krw_rate() -> float:
@@ -39,7 +44,8 @@ def get_usd_krw_rate() -> float:
 
 
 def analyze_ticker(market: str, ticker: str) -> dict:
-    closes = fetch_kr_prices(ticker) if market == "kr" else fetch_us_prices(ticker)
+    ohlc = fetch_kr_ohlc(ticker) if market == "kr" else fetch_us_ohlc(ticker)
+    closes = ohlc["close"]
     if len(closes) < 30:
         raise ValueError(f"지표 계산에 필요한 데이터가 부족함 ({len(closes)}일)")
 
@@ -47,43 +53,59 @@ def analyze_ticker(market: str, ticker: str) -> dict:
     ma5 = compute_ma(closes, 5)
     ma20 = compute_ma(closes, 20)
     macd_line, macd_signal = compute_macd(closes)
+    bb_upper, bb_mid, bb_lower = compute_bollinger(closes)
+    stoch_k, stoch_d = compute_stochastic(ohlc["high"], ohlc["low"], closes)
 
-    values = [rsi, ma5, ma20, macd_line, macd_signal]
+    values = [rsi, ma5, ma20, macd_line, macd_signal, bb_upper, bb_mid, bb_lower, stoch_k, stoch_d]
     if any(pd.isna(v) or v in (float("inf"), float("-inf")) for v in values):
         raise ValueError("지표 계산 결과가 유효하지 않음(NaN/Inf)")
 
-    score, opinion, comment = score_and_opinion(rsi, ma5, ma20, macd_line, macd_signal)
-
+    price = float(closes.iloc[-1])
     prev_close = float(closes.iloc[-2])
-    change_pct = round((float(closes.iloc[-1]) - prev_close) / prev_close * 100, 2)
+    change_pct = round((price - prev_close) / prev_close * 100, 2)
 
     result = {
         "market": market,
-        "price": round(float(closes.iloc[-1]), 2),
+        "price": round(price, 2),
         "change_pct": change_pct,
         "rsi": round(rsi, 1),
         "ma5": round(ma5, 1),
         "ma20": round(ma20, 1),
         "macd": round(macd_line, 2),
         "macd_signal": round(macd_signal, 2),
-        "score": score,
-        "opinion": opinion,
-        "comment": comment,
+        "bb_upper": round(bb_upper, 2),
+        "bb_mid": round(bb_mid, 2),
+        "bb_lower": round(bb_lower, 2),
+        "stoch_k": round(stoch_k, 1),
+        "stoch_d": round(stoch_d, 1),
     }
 
+    name = ticker
     if market == "kr":
         try:
-            result["name"] = pykrx_stock.get_market_ticker_name(ticker)
+            name = pykrx_stock.get_market_ticker_name(ticker)
+            result["name"] = name
         except Exception:
             pass
     else:
         try:
             info = yf.Ticker(ticker).info
-            name = info.get("shortName") or info.get("longName")
-            if name:
+            yf_name = info.get("shortName") or info.get("longName")
+            if yf_name:
+                name = yf_name
                 result["name"] = name
         except Exception:
             pass
+
+    llm_result = generate_opinion(name, ticker, market, result["price"], result)
+    result["opinion"] = llm_result["opinion"]
+    result["comment"] = llm_result["comment"]
+    if llm_result.get("analysis"):
+        result["llm_analysis"] = llm_result["analysis"]
+    if llm_result.get("strategy"):
+        result["llm_strategy"] = llm_result["strategy"]
+    if "score" in llm_result:
+        result["score"] = llm_result["score"]
 
     return result
 

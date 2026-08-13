@@ -28,6 +28,27 @@ def compute_macd(
     return float(macd_line.iloc[-1]), float(signal_line.iloc[-1])
 
 
+def compute_bollinger(
+    closes: pd.Series, window: int = 20, num_std: float = 2.0
+) -> Tuple[float, float, float]:
+    mid = closes.rolling(window).mean()
+    std = closes.rolling(window).std()
+    upper = mid + num_std * std
+    lower = mid - num_std * std
+    return float(upper.iloc[-1]), float(mid.iloc[-1]), float(lower.iloc[-1])
+
+
+def compute_stochastic(
+    highs: pd.Series, lows: pd.Series, closes: pd.Series,
+    k_period: int = 14, d_period: int = 3,
+) -> Tuple[float, float]:
+    lowest_low = lows.rolling(k_period).min()
+    highest_high = highs.rolling(k_period).max()
+    percent_k = (closes - lowest_low) / (highest_high - lowest_low) * 100
+    percent_d = percent_k.rolling(d_period).mean()
+    return float(percent_k.iloc[-1]), float(percent_d.iloc[-1])
+
+
 def score_and_opinion(
     rsi: float, ma5: float, ma20: float, macd_line: float, macd_signal: float
 ) -> Tuple[int, str, str]:
@@ -90,5 +111,15 @@ if __name__ == "__main__":
 
     score, opinion, _ = score_and_opinion(rsi=50, ma5=110, ma20=100, macd_line=1, macd_signal=5)
     assert score == 0 and opinion == "보유", f"중립+골든크로스+MACD하락인데 보유가 아님: {score}, {opinion}"
+
+    bb_upper, bb_mid, bb_lower = compute_bollinger(uptrend)
+    assert bb_upper > bb_mid > bb_lower, "볼린저 밴드 상단/중단/하단 순서가 어긋남"
+
+    highs = uptrend + 1
+    lows = uptrend - 1
+    stoch_k, stoch_d = compute_stochastic(highs, lows, uptrend)
+    assert stoch_k > 50, "꾸준한 상승 추세인데 스토캐스틱 %K가 낮음"
+
+    print("indicators.py self-check 통과")
 
     print("indicators.py self-check 통과")
