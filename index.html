@@ -879,6 +879,7 @@
                 : `목표가 ${formatPrice(h.market, lv.target)}(매입가 대비 ${pctVsBuy(lv.target, h.buyPrice)})보다 높아요.`}
               아래 기술적 지표와 무관하게, <b>미리 정해둔 리스크 관리 기준에 닿았다는 뜻</b>이라 이 신호를 우선 보여드려요.
             </p>
+            ${!isStop ? '<button id="profitAckBtn" class="stock-card-add-btn" style="width:100%;margin-top:8px">이 의견에 따라 익절했어요 (다음 의견 나올 때까지 안 띄움)</button>' : ""}
           </div>`;
       }
 
@@ -915,6 +916,22 @@
 
       document.getElementById("opinionModalBody").innerHTML = html;
       document.getElementById("opinionModal").classList.add("active");
+
+      const ackBtn = document.getElementById("profitAckBtn");
+      if (ackBtn) {
+        ackBtn.addEventListener("click", () => {
+          const holdings = loadHoldings();
+          const target = holdings.find((x) => x.ticker === ticker);
+          if (target) {
+            // 지금 기술적 의견(r.opinion) 기준으로 확인 처리 — 다음 파이프라인 실행에서
+            // 그 의견이 바뀌기 전까지는 같은 익절 신호를 다시 띄우지 않는다.
+            target.profitAckOpinion = r.opinion;
+            saveHoldings(holdings);
+          }
+          document.getElementById("opinionModal").classList.remove("active");
+          renderHoldingsTab();
+        });
+      }
     }
     document.getElementById("opinionModalCloseBtn").addEventListener("click", () => {
       document.getElementById("opinionModal").classList.remove("active");
@@ -1117,7 +1134,13 @@
           // 매입가 기준(진입가 대비 고정) — 현재가 기준이면 손절가/목표가가 늘 현재가에서
           // 같은 비율만큼 떨어져 있어 "근처에 왔는지" 판단이 성립하지 않는다.
           const lv = priceLevels(h.buyPrice, r);
-          const displayOpinion = positionSignal(r.price, lv, r.opinion);
+          let displayOpinion = positionSignal(r.price, lv, r.opinion);
+          // 이 의견(r.opinion) 기준으로 이미 "익절했어요"를 눌렀다면, 같은 익절 신호를
+          // 반복해서 띄우지 않고 기술적 의견으로 되돌린다 — 파이프라인이 다시 돌아
+          // r.opinion이 바뀌면(=다음 의견) profitAckOpinion과 달라져 다시 활성화된다.
+          if (displayOpinion === "익절의견" && h.profitAckOpinion === r.opinion) {
+            displayOpinion = r.opinion;
+          }
           // 배지(손절/익절 신호)와 코멘트(기술적 지표)가 서로 다른 얘기를 할 수 있으므로
           // — 예: 손절선은 넘었는데 RSI/MACD는 여전히 매수 우위 — 둘 다 보여준다.
           // 손절/익절은 매입가 기준 사실(risk-management)이라 기술적 지표보다 우선한다.
