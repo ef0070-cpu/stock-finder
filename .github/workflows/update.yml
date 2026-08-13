@@ -2,8 +2,7 @@ name: Update stock data
 
 on:
   schedule:
-    - cron: "0 7 * * 1-5"   # 매일 16:00 KST (평일)
-    - cron: "0 22 * * 1-5"  # 매일 07:00 KST (평일)
+    - cron: "0 22 * * 1-5"  # 매일 07:00 KST (평일) — 간밤 미국장 마감 직후, 국내장 개장 전
   workflow_dispatch: {}
 
 permissions:
