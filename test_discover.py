@@ -26,6 +26,10 @@ def test_select_candidates():
     ]
     assert [c["ticker"] for c in select_candidates(no_us_buy)] == ["A"]
 
+    # 시장별로 개수를 다르게 지정할 수 있다 (국내 2개, 미국 0개)
+    result_custom = select_candidates(analyzed, kr_limit=2, us_limit=0)
+    assert [c["ticker"] for c in result_custom] == ["C", "A"]
+
 
 def test_interleave():
     assert interleave(["k1", "k2", "k3"], ["u1"]) == ["k1", "u1", "k2", "k3"]

@@ -4,9 +4,10 @@ run_pipeline.bat/서버 업데이트 버튼과는 완전히 독립적으로, 필
 
 1단계: 국내 시총 100 + 미국 S&P500 시총 100 스크리닝
 2단계: 저렴한 퀀트 점수식(RSI/MA/MACD)으로 기술적 필터링
-3~4단계: 시장별(국내/미국) 최고 후보 1개씩만 골라 Claude(웹검색)로 워런 버핏
-         체크리스트 심층 리뷰 — 전수(최대 200종목)가 아니라 단 2종목에만 LLM을
-         호출해 비용·시간을 억제한다.
+3~4단계: 시장(국내/미국)별로 사용자가 지정한 개수만큼(기본 1개씩)의 최고 후보만
+         골라 Claude(웹검색)로 워런 버핏 체크리스트 심층 리뷰 — 전수(최대 200종목)가
+         아니라 소수 종목에만 LLM을 호출해 비용·시간을 억제한다. 개수는
+         DISCOVER_KR_COUNT/DISCOVER_US_COUNT 환경변수로 조절한다.
 """
 import json
 import os
@@ -114,14 +115,17 @@ def fetch_fundamentals(market: str, ticker: str) -> tuple[Optional[float], Optio
     return per, div
 
 
-def select_candidates(analyzed: list[dict], limit_per_market: int = FINAL_LIMIT_PER_MARKET) -> list[dict]:
-    """시장(국내/미국)별로 매수 의견 중 점수가 가장 높은 종목만 골라 최고 후보를 압축한다.
-    해당 시장에 매수 의견이 하나도 없으면 그 시장은 빈 채로 둔다(억지로 채우지 않음)."""
+def select_candidates(
+    analyzed: list[dict], kr_limit: int = FINAL_LIMIT_PER_MARKET, us_limit: int = FINAL_LIMIT_PER_MARKET
+) -> list[dict]:
+    """시장(국내/미국)별로 매수 의견 중 점수가 가장 높은 종목만, 시장별로 지정된 개수만큼
+    골라 최고 후보를 압축한다. 매수 의견이 그 개수보다 적으면 있는 만큼만 담는다."""
+    limits = {"kr": kr_limit, "us": us_limit}
     result = []
     for market in ("kr", "us"):
         buys = [a for a in analyzed if a["market"] == market and a.get("opinion") == "매수"]
         buys.sort(key=lambda a: a["score"], reverse=True)
-        result.extend(buys[:limit_per_market])
+        result.extend(buys[: limits[market]])
     return result
 
 
@@ -145,7 +149,7 @@ def write_report(candidates: list[dict], date: str) -> None:
     md = [f"# 종목 발굴 보고서 ({date})", ""]
     md.append(
         "**파이프라인**: 1단계 종목발굴(국내 시총 100 + 미국 S&P500 시총 100) → "
-        "2단계 기술적지표 필터 → 3~4단계 워런버핏 검토(시장별 최고 후보 1개씩)"
+        "2단계 기술적지표 필터 → 3~4단계 워런버핏 검토(시장별 지정 개수만큼 최고 후보)"
     )
     md.append("")
     if not passed:
@@ -337,7 +341,15 @@ def main() -> None:
         )[:8]
         _write_progress(progress)
 
-    candidates = select_candidates(analyzed)
+    def _read_count(env_name: str) -> int:
+        try:
+            return max(0, int(os.environ.get(env_name, FINAL_LIMIT_PER_MARKET)))
+        except ValueError:
+            return FINAL_LIMIT_PER_MARKET
+
+    kr_limit = _read_count("DISCOVER_KR_COUNT")
+    us_limit = _read_count("DISCOVER_US_COUNT")
+    candidates = select_candidates(analyzed, kr_limit=kr_limit, us_limit=us_limit)
 
     print("PER/배당수익률 조회 및 태그 분류...")
     for c in candidates:
@@ -350,7 +362,7 @@ def main() -> None:
         c["dividend_yield"] = round(div, 2) if div is not None else None
         c["tags"] = classify_tags(per, div)
 
-    print("3~4단계: 워런 버핏 체크리스트 심층 리뷰 (시장별 최고 후보만)...")
+    print(f"3~4단계: 워런 버핏 체크리스트 심층 리뷰 (국내 {kr_limit}개 · 미국 {us_limit}개)...")
     progress["stage"] = 3
     progress["stage_label"] = "3~4단계: 워런 버핏 체크리스트 심층 리뷰"
     progress["review_total"] = len(candidates)
@@ -395,7 +407,7 @@ def main() -> None:
     _write_progress(progress)
 
     pass_count = sum(1 for c in candidates if c.get("warren_score", {}).get("verdict") == "PASS")
-    print(f"완료: 시장별 최고 후보 {len(candidates)}개 검토 (PASS {pass_count}개) → {CANDIDATES_FILE}, reports/{report_date}-발굴보고서.html 저장")
+    print(f"완료: 최고 후보 {len(candidates)}개 검토 (PASS {pass_count}개) → {CANDIDATES_FILE}, reports/{report_date}-발굴보고서.html 저장")
 
 
 if __name__ == "__main__":

@@ -86,8 +86,14 @@
   }
   .cal-header button:hover { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
   .cal-header span { font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+  .discover-controls { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .discover-controls label { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .discover-controls select {
+    padding: 4px 6px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 12px; background: var(--surface); color: var(--text);
+  }
   .cal-header button#discoverStartBtn {
-    width: auto; height: auto; margin-left: auto; padding: 7px 14px; border: none;
+    width: auto; height: auto; padding: 7px 14px; border: none;
     border-radius: var(--radius-sm); background: var(--primary); color: #fff; font-weight: 600; font-size: 13px;
   }
   .cal-header button#discoverStartBtn:hover { background: var(--primary-hover); color: #fff; }
@@ -240,8 +246,28 @@
       <button id="finderCalPrevBtn">‹</button>
       <span id="finderCalMonthLabel"></span>
       <button id="finderCalNextBtn">›</button>
-      <button id="discoverStartBtn" title="국내·미국 시장에서 오늘의 최고 후보 1종목씩을 찾아 워런 버핏 체크리스트까지 자동 검토합니다 (로컬 서버 필요)">종목 발굴 시작</button>
-      <span id="discoverStatus"></span>
+      <div class="discover-controls">
+        <label>국내주식 종목수량
+          <select id="discoverKrCount">
+            <option value="0">0</option>
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+          </select>
+        </label>
+        <label>해외주식 종목수량
+          <select id="discoverUsCount">
+            <option value="0">0</option>
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+          </select>
+        </label>
+        <button id="discoverStartBtn" title="선택한 개수만큼 국내·미국 시장에서 최고 후보를 찾아 워런 버핏 체크리스트까지 자동 검토합니다">종목 발굴 시작</button>
+        <span id="discoverStatus"></span>
+      </div>
     </div>
     <div class="cal-grid" id="finderCalGrid"></div>
   </div>
@@ -1053,7 +1079,7 @@
     const GH_REPO = "ef0070-cpu/stock-finder";
     const GH_TOKEN_KEY = "stock_app_gh_token";
 
-    async function runDiscoverHosted(status) {
+    async function runDiscoverHosted(status, krCount, usCount) {
       let token = localStorage.getItem(GH_TOKEN_KEY);
       if (!token) {
         token = prompt(
@@ -1073,7 +1099,7 @@
           {
             method: "POST",
             headers: { "Authorization": `Bearer ${token}`, "Accept": "application/vnd.github+json" },
-            body: JSON.stringify({ ref: "main" }),
+            body: JSON.stringify({ ref: "main", inputs: { kr_count: String(krCount), us_count: String(usCount) } }),
           }
         );
         if (res.status === 204) {
@@ -1094,17 +1120,19 @@
     document.getElementById("discoverStartBtn").addEventListener("click", async () => {
       const btn = document.getElementById("discoverStartBtn");
       const status = document.getElementById("discoverStatus");
+      const krCount = document.getElementById("discoverKrCount").value;
+      const usCount = document.getElementById("discoverUsCount").value;
       btn.disabled = true;
 
       if (isHosted) {
-        await runDiscoverHosted(status);
+        await runDiscoverHosted(status, krCount, usCount);
         btn.disabled = false;
         return;
       }
 
       status.textContent = "시작하는 중...";
       try {
-        const res = await fetch("http://127.0.0.1:8765/discover");
+        const res = await fetch(`http://127.0.0.1:8765/discover?kr=${krCount}&us=${usCount}`);
         const json = await res.json();
         if (json.status === "already_running") {
           status.textContent = "이미 실행 중입니다.";

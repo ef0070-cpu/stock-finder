@@ -1,7 +1,16 @@
 name: Discover stocks
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      kr_count:
+        description: "국내주식 발굴 종목수량"
+        default: "1"
+        type: string
+      us_count:
+        description: "해외주식 발굴 종목수량"
+        default: "1"
+        type: string
 
 permissions:
   contents: write
@@ -27,6 +36,8 @@ jobs:
       - run: python discover.py
         env:
           ANTHROPIC_API_KEY: ${{ secrets.MY_STOCKFINDER }}
+          DISCOVER_KR_COUNT: ${{ github.event.inputs.kr_count }}
+          DISCOVER_US_COUNT: ${{ github.event.inputs.us_count }}
 
       - name: Commit candidates/report if changed
         run: |

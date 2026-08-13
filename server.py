@@ -3,6 +3,7 @@
 이 창을 열어둔 동안만 업데이트 버튼이 동작한다."""
 import http.server
 import json
+import os
 import re
 import socketserver
 import subprocess
@@ -71,7 +72,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if discover_process is not None and discover_process.poll() is None:
                 self._json(200, {"status": "already_running"})
                 return
-            discover_process = subprocess.Popen([sys.executable, "discover.py"])
+            kr_count = query.get("kr", ["1"])[0]
+            us_count = query.get("us", ["1"])[0]
+            env = dict(os.environ, DISCOVER_KR_COUNT=kr_count, DISCOVER_US_COUNT=us_count)
+            discover_process = subprocess.Popen([sys.executable, "discover.py"], env=env)
             self._json(200, {"status": "started"})
             return
 
