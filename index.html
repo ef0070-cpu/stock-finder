@@ -463,7 +463,7 @@
       // 웹호스팅(https) 배포본은 로컬 프록시 서버에 접근할 수 없어 이 조회가 항상 실패한다
       // — 애초에 시도하지 않고 실제 원인과 해결책을 바로 안내한다.
       if (isHosted) {
-        throw new Error("웹호스팅 버전은 미등록 종목의 실시간 조회를 지원하지 않음 — tickers.json에 추가 후 다음 자동 갱신(평일 07:00·16:00)을 기다려 주세요");
+        throw new Error("웹호스팅 버전은 미등록 종목의 실시간 조회를 지원하지 않음 — tickers.json에 추가 후 다음 자동 갱신(평일 07:00)을 기다려 주세요");
       }
       let json;
       try {
@@ -650,7 +650,7 @@
     }
 
     // 웹호스팅(https) 배포본은 로컬 서버(127.0.0.1:8765)에 접근할 수 없다 — 대신
-    // GitHub Actions(.github/workflows/update.yml)가 평일 07:00·16:00(KST)에 자동으로
+    // GitHub Actions(.github/workflows/update.yml)가 평일 07:00(KST)에 자동으로
     // data.js를 갱신·배포하므로, 버튼은 "새로고침"으로 최신 배포본을 다시 불러오는
     // 용도로만 쓴다. 로컬(file:// 또는 http://127.0.0.1 개발 서버)에서는 기존 동작 유지.
     const isHosted = location.protocol === "https:";
@@ -661,7 +661,7 @@
       if (isHosted) {
         const btn = document.getElementById("updateBtn");
         btn.textContent = "새로고침";
-        btn.title = "데이터는 평일 07:00·16:00(KST)에 자동 갱신됩니다. 최신 배포본을 다시 불러오려면 클릭하세요.";
+        btn.title = "데이터는 평일 07:00(KST)에 자동 갱신됩니다. 최신 배포본을 다시 불러오려면 클릭하세요.";
       }
     }
 
