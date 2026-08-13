@@ -535,6 +535,24 @@
       return STOCK_DATA.results[ticker];
     }
 
+    // 자동 조회가 안 되는 종목(신규/미등록 티커 등)을 위한 수동 입력 현재가 폴백 —
+    // 실제 데이터가 있으면 그걸 그대로 쓰고, 없을 때만 h.manualPrice(직접수정 팝업에서
+    // 입력)를 대신 써서 나머지 렌더링 로직(손익, priceLevels 등)이 평소처럼 동작하게 한다.
+    function getAnalysisWithFallback(h) {
+      const r = getAnalysis(h.ticker);
+      if ((!r || r.error) && h.manualPrice != null) {
+        return {
+          market: h.market,
+          price: h.manualPrice,
+          name: (r && r.name) || h.ticker,
+          opinion: "보유",
+          comment: "수동 입력 현재가 — 기술적 지표 없음",
+          score: null,
+        };
+      }
+      return r;
+    }
+
     function ensureLiveAnalysis(ticker, market) {
       if (market !== "us") return; // KR은 브라우저에서 직접 조회할 공개 API가 없음
       if (liveCache[ticker] || liveLoading.has(ticker)) return;
@@ -614,8 +632,8 @@
       trades.forEach((t) => {
         const r = getAnalysis(t.ticker);
         const name = (r && r.name) || t.ticker;
-        const typeLabel = t.type === "sell" ? "매도" : "매수";
-        const typeCls = t.type === "sell" ? "opinion-sell" : "opinion-buy";
+        const typeLabel = t.type === "sell" ? "매도" : t.type === "edit" ? "직접수정" : "매수";
+        const typeCls = t.type === "sell" ? "opinion-sell" : t.type === "edit" ? "opinion-hold" : "opinion-buy";
         const pnlCell = t.realizedPnl != null
           ? `<td class="${t.realizedPnl >= 0 ? "pnl-plus" : "pnl-minus"}">${formatPrice("kr", t.realizedPnl)}</td>`
           : "<td>—</td>";
@@ -684,7 +702,7 @@
       let totalInvested = 0;
       let totalStockValue = 0;
       holdings.forEach((h) => {
-        const r = getAnalysis(h.ticker);
+        const r = getAnalysisWithFallback(h);
         totalInvested += toKrw(h.market, h.buyPrice) * h.quantity;
         if (r && !r.error) totalStockValue += toKrw(h.market, r.price) * h.quantity;
       });
@@ -909,10 +927,26 @@
     function openTradeModal(idx) {
       const holdings = loadHoldings();
       const h = holdings[idx];
-      const r = getAnalysis(h.ticker);
+      const r = getAnalysisWithFallback(h);
       const name = (r && r.name) || h.ticker;
       const hasPrice = r && !r.error;
       const currentPriceKrw = Math.round(toKrw(h.market, hasPrice ? r.price : h.buyPrice));
+
+      // 추가매수/매도는 수량+단가를 계산해 평균단가를 자동 산출하지만, 매번 정확한
+      // 추가매입가를 몰라도(또는 계산이 귀찮아도) 쓸 수 있게 "직접수정"에서는
+      // 평균매입가·수량·현재가를 계산 없이 그대로 입력할 수 있게 한다.
+      function tradeFieldsHtml(action) {
+        if (action === "edit") {
+          const manualPriceKrw = h.manualPrice != null ? Math.round(toKrw(h.market, h.manualPrice)) : "";
+          return `
+            <input type="number" id="tradeEditBuyPrice" placeholder="매입가 (원)" step="0.01" value="${Math.round(toKrw(h.market, h.buyPrice))}" />
+            <input type="number" id="tradeEditQty" placeholder="수량" step="1" min="0" value="${h.quantity}" />
+            <input type="number" id="tradeEditPrice" placeholder="현재가 (원, 자동조회 안 될 때만)" step="0.01" value="${manualPriceKrw}" />`;
+        }
+        return `
+          <input type="number" id="tradeQty" placeholder="수량" step="1" min="1" />
+          <input type="number" id="tradePrice" placeholder="단가 (원)" step="0.01" value="${currentPriceKrw}" />`;
+      }
 
       document.getElementById("tradeModalTitle").textContent = `${name} (${h.ticker})`;
       document.getElementById("tradeModalBody").innerHTML = `
@@ -924,13 +958,16 @@
           <select id="tradeAction">
             <option value="buy">추가매수</option>
             <option value="sell">매도</option>
+            <option value="edit">매입가/수량 직접수정</option>
           </select>
-          <input type="number" id="tradeQty" placeholder="수량" step="1" min="1" />
-          <input type="number" id="tradePrice" placeholder="단가 (원)" step="0.01" value="${currentPriceKrw}" />
+          <span id="tradeFields" style="display:contents">${tradeFieldsHtml("buy")}</span>
           <button id="tradeExecuteBtn">실행</button>
         </div>
         <button id="tradeDeleteBtn" class="del-btn" style="margin-top:14px">삭제 (실수로 등록한 종목 — 손익 미반영)</button>
       `;
+      document.getElementById("tradeAction").addEventListener("change", (e) => {
+        document.getElementById("tradeFields").innerHTML = tradeFieldsHtml(e.target.value);
+      });
       document.getElementById("tradeExecuteBtn").addEventListener("click", () => executeTrade(idx));
       document.getElementById("tradeDeleteBtn").addEventListener("click", () => deleteHolding(idx));
       document.getElementById("tradeModal").classList.add("active");
@@ -947,6 +984,33 @@
     // 현금에 더한다 — 전량 매도되면 보유목록에서 제거.
     function executeTrade(idx) {
       const action = document.getElementById("tradeAction").value;
+
+      if (action === "edit") {
+        const holdings = loadHoldings();
+        const h = holdings[idx];
+        const buyPriceKrw = parseFloat(document.getElementById("tradeEditBuyPrice").value);
+        const qty = parseFloat(document.getElementById("tradeEditQty").value);
+        const manualPriceInput = document.getElementById("tradeEditPrice").value.trim();
+        const manualPriceKrw = parseFloat(manualPriceInput);
+        if (!buyPriceKrw || buyPriceKrw <= 0 || !qty || qty <= 0) {
+          alert("매입가와 수량을 올바르게 입력하세요.");
+          return;
+        }
+        h.buyPrice = h.market === "us" ? buyPriceKrw / usdKrwRate : buyPriceKrw;
+        h.quantity = qty;
+        if (manualPriceInput !== "" && manualPriceKrw > 0) {
+          h.manualPrice = h.market === "us" ? manualPriceKrw / usdKrwRate : manualPriceKrw;
+        } else if (manualPriceInput === "") {
+          delete h.manualPrice;
+        }
+        saveHoldings(holdings);
+        recordTrade({ ticker: h.ticker, market: h.market, type: "edit", quantity: qty, priceKrw: buyPriceKrw });
+        alert("매입가/수량을 직접 수정했습니다. (현금 잔고는 변경되지 않았습니다 — 실제 매수라면 현금 보유액을 직접 조정하세요)");
+        document.getElementById("tradeModal").classList.remove("active");
+        renderHoldingsTab();
+        return;
+      }
+
       const qty = parseFloat(document.getElementById("tradeQty").value);
       const priceKrw = parseFloat(document.getElementById("tradePrice").value);
       if (!qty || qty <= 0 || isNaN(priceKrw) || priceKrw <= 0) {
@@ -1017,7 +1081,7 @@
       }
 
       holdings.forEach((h, idx) => {
-        const r = getAnalysis(h.ticker);
+        const r = getAnalysisWithFallback(h);
         const tr = document.createElement("tr");
         const name = (r && r.name) || "-";
 
