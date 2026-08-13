@@ -776,16 +776,17 @@
       }
 
       if (r.llm_analysis) {
+        const nl2br = (s) => escapeHtml(s).replace(/\n/g, "<br>");
         html += `
           <div class="buffett-section">
-            <div class="buffett-section-title">AI 애널리스트 분석</div>
-            <p style="font-size:13px;color:var(--text-muted);line-height:1.5">${escapeHtml(r.llm_analysis)}</p>
+            <div class="buffett-section-title">💡 왜 이런 의견을 냈나요?</div>
+            <p style="font-size:13px;color:var(--text-muted);line-height:1.7">${nl2br(r.llm_analysis)}</p>
           </div>`;
         if (r.llm_strategy) {
           html += `
             <div class="buffett-section">
-              <div class="buffett-section-title">대응 전략</div>
-              <p style="font-size:13px;color:var(--text-muted);line-height:1.5">${escapeHtml(r.llm_strategy)}</p>
+              <div class="buffett-section-title">💰 실전 대응 전략</div>
+              <p style="font-size:13px;color:var(--text-muted);line-height:1.7">${nl2br(r.llm_strategy)}</p>
             </div>`;
         }
       } else {

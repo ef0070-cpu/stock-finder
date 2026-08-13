@@ -9,38 +9,49 @@ from indicators import score_and_opinion
 
 MODEL = "claude-opus-5"
 
-SYSTEM_PROMPT = """너는 월스트리트 최고 수준의 퀀트 애널리스트이자 주식 트레이더야.
-사용자가 보유하거나 관심 있는 주식 종목의 데이터를 제공하면, 펀더멘털(뉴스/목표가)과 테크니컬(차트 지표) 데이터를 종합적으로 분석하여 명확한 투자 의견을 제시해야 해.
+SYSTEM_PROMPT = """너는 주식 초보자들에게 복잡한 금융 데이터를 아주 쉽고 친절하게 설명해 주는 AI 주식 멘토야.
+종목에 대한 펀더멘털(실적, 뉴스)과 기술적 지표(차트) 데이터를 종합하여 분석 결과를 출력할 때,
+절대 길고 복잡한 줄글(Wall of text)로 작성하지 마. 전체적인 맥락은 빠짐없이 포함하되, 무조건
+아래의 규칙과 양식을 엄격하게 지켜서 출력해.
+
+[작성 규칙]
+1. 가독성 극대화: 단락을 길게 쓰지 말고, 글머리 기호(-, *, 💡 등)를 적극 사용하여 시각적으로 분리해.
+2. 초보자 눈높이: PER, PBR, MACD, RSI 같은 전문 용어를 사용할 때는 초보자가 이해할 수 있는 쉬운
+   의미를 함께 적어줘. (예: "RSI 30 이하 (현재 주가가 많이 떨어져서 싸진 상태)")
+3. 핵심 먼저: 부연 설명보다는 결론과 이유를 직관적으로 먼저 배치해.
 
 [분석에 사용할 데이터]
 1. 종목 정보: 종목명/티커, 현재가
 2. 시장 및 뉴스: 최근 국내외 거시경제 상황 및 해당 기업의 주요 뉴스 (웹검색으로 직접 조사)
 3. 애널리스트 목표가: 증권사들의 평균 목표가 및 괴리율 (웹검색으로 직접 조사)
-4. 기술적 지표:
-   - 이동평균선(MA): 정배열/역배열 상태, 골든/데드크로스 여부
-   - RSI: 과매수(70 이상) 및 과매도(30 이하) 판단
-   - MACD: 시그널선 교차 여부 및 추세 강도
-   - 볼린저 밴드 (Bollinger Bands): 주가의 상단/하단 밴드 이탈 여부 (과열/침체 판단)
-   - 스토캐스틱 (Stochastic): %K와 %D의 교차를 통한 단기 매수/매도 타이밍
+4. 기술적 지표: 이동평균선(MA), RSI, MACD, 볼린저 밴드, 스토캐스틱
 
-[출력 및 판단 가이드라인]
-위 데이터를 바탕으로 아래 4가지 중 하나의 최종 의견을 도출해.
-- 매수: 상승 추세 초입, 확실한 저평가 구간, 강력한 호재 동반 시
-- 보유: 현재 추세가 안정적으로 유지되고 있으며 목표가에 도달하지 않은 경우
-- 일부익절: 단기 급등으로 지표가 과열(RSI 70 이상, 볼린저 밴드 상단 돌파 등)되었으나 중장기 호재가 남은 경우
-- 매도: 하락 추세 전환, 주요 지지선 이탈, 악재 발생, 혹은 목표가 달성 후 모멘텀 소멸 시
+[출력 양식] (반드시 아래 구조를 그대로, 다른 말 없이 따를 것)
 
-[출력 형식 (반드시 아래 양식을 지켜서, 다른 말 없이 답변할 것)]
-최종 의견: [매수 / 보유 / 일부익절 / 매도 중 택 1]
-앱 코멘트용 한 줄 요약: [RSI 00 중립, 골든크로스, MACD 상승전환 → 매수 우위 등 50자 이내로 앱 대시보드에 표기할 간결한 코멘트]
-종합 분석: [뉴스, 차트, 목표가를 바탕으로 해당 의견을 낸 구체적인 논리 (3~4문장)]
-대응 전략: [적정 손절가 및 목표가 제시]"""
+■ 최종 의견: [매수 / 보유 / 일부익절 / 매도 중 택 1]
+■ 한 줄 요약: [초보자도 단번에 이해할 수 있는 매매 핵심 이유 1문장]
+
+💡 왜 이런 의견을 냈나요? (분석 요약)
+- 🏢 기업 실적/이슈: [매출 상태나 주요 호재/악재를 쉬운 말로 1~2줄 요약]
+- 📈 현재 차트 상태: [현재 주가 흐름과 기술적 지표가 의미하는 바를 쉬운 말로 1~2줄 요약]
+- 🎯 전문가 전망: [증권사 목표가와 현재 주가의 차이(괴리율) 등을 간단히 언급]
+
+💰 실전 대응 전략
+- 진입(살 가격): [00,000원 ~ 00,000원 부근]
+- 목표(팔 가격): [1차: 00,000원 / 2차: 00,000원]
+- 손절(위험 가격): [00,000원 이탈 시 손절 (이유 짧게 덧붙임)]"""
 
 _RESPONSE_PATTERN = re.compile(
-    r"최종 의견:\s*(?P<opinion>\S+)\s*"
-    r"앱 코멘트용 한 줄 요약:\s*(?P<comment>.+?)\s*"
-    r"종합 분석:\s*(?P<analysis>.+?)\s*"
-    r"대응 전략:\s*(?P<strategy>.+)",
+    r"■\s*최종 의견:\s*(?P<opinion>\S+)\s*"
+    r"■\s*한 줄 요약:\s*(?P<comment>.+?)\s*"
+    r"💡.*?\n"
+    r"-\s*🏢\s*기업 실적/이슈:\s*(?P<biz>.+?)\s*"
+    r"-\s*📈\s*현재 차트 상태:\s*(?P<chart>.+?)\s*"
+    r"-\s*🎯\s*전문가 전망:\s*(?P<analyst>.+?)\s*"
+    r"💰.*?\n"
+    r"-\s*진입\(살 가격\):\s*(?P<entry>.+?)\s*"
+    r"-\s*목표\(팔 가격\):\s*(?P<target>.+?)\s*"
+    r"-\s*손절\(위험 가격\):\s*(?P<stop>.+)",
     re.DOTALL,
 )
 
@@ -72,15 +83,25 @@ def _parse_response(text: str) -> Optional[dict]:
     opinion = match.group("opinion").strip()
     if opinion not in VALID_OPINIONS:
         return None
+    analysis = (
+        f"🏢 기업 실적/이슈: {match.group('biz').strip()}\n"
+        f"📈 현재 차트 상태: {match.group('chart').strip()}\n"
+        f"🎯 전문가 전망: {match.group('analyst').strip()}"
+    )
+    strategy = (
+        f"진입(살 가격): {match.group('entry').strip()}\n"
+        f"목표(팔 가격): {match.group('target').strip()}\n"
+        f"손절(위험 가격): {match.group('stop').strip()}"
+    )
     return {
         "opinion": opinion,
         "comment": match.group("comment").strip(),
-        "analysis": match.group("analysis").strip(),
-        "strategy": match.group("strategy").strip(),
+        "analysis": analysis,
+        "strategy": strategy,
     }
 
 
-def _fallback(rsi: float, ma5: float, ma20: float, macd_line: float, macd_signal: float) -> dict:
+def quant_fallback(rsi: float, ma5: float, ma20: float, macd_line: float, macd_signal: float) -> dict:
     score, opinion, comment = score_and_opinion(rsi, ma5, ma20, macd_line, macd_signal)
     return {"opinion": opinion, "comment": comment, "analysis": None, "strategy": None, "score": score}
 
@@ -90,7 +111,7 @@ def generate_opinion(name: str, ticker: str, market: str, price: float, ind: dic
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         print(f"  [{ticker}] ANTHROPIC_API_KEY 없음 - 퀀트 점수식으로 폴백")
-        return _fallback(ind["rsi"], ind["ma5"], ind["ma20"], ind["macd"], ind["macd_signal"])
+        return quant_fallback(ind["rsi"], ind["ma5"], ind["ma20"], ind["macd"], ind["macd_signal"])
 
     try:
         import anthropic
@@ -110,22 +131,31 @@ def generate_opinion(name: str, ticker: str, market: str, price: float, ind: dic
         return parsed
     except Exception as e:
         print(f"  [{ticker}] LLM 의견 생성 실패({e}) - 퀀트 점수식으로 폴백")
-        return _fallback(ind["rsi"], ind["ma5"], ind["ma20"], ind["macd"], ind["macd_signal"])
+        return quant_fallback(ind["rsi"], ind["ma5"], ind["ma20"], ind["macd"], ind["macd_signal"])
 
 
 if __name__ == "__main__":
-    fallback = _fallback(rsi=25, ma5=110, ma20=100, macd_line=5, macd_signal=1)
+    fallback = quant_fallback(rsi=25, ma5=110, ma20=100, macd_line=5, macd_signal=1)
     assert fallback["opinion"] == "매수", f"폴백 로직이 퀀트 점수식과 다름: {fallback}"
     assert fallback["analysis"] is None and fallback["strategy"] is None
 
-    sample_text = """최종 의견: 일부익절
-앱 코멘트용 한 줄 요약: RSI 78 과매수, 볼린저 상단 돌파 → 단기 조정 우려
-종합 분석: 최근 실적 호조로 급등했으나 RSI가 78까지 치솟아 단기 과열 신호가 뚜렷하다.
-애널리스트 평균 목표가 대비 이미 근접해 상승 여력이 제한적이다.
-대응 전략: 손절가 현재가 대비 -7%, 목표가 현재가 대비 +5% 수준에서 일부 익절 권장"""
+    sample_text = """■ 최종 의견: 일부익절
+■ 한 줄 요약: 단기간 많이 올라서 잠깐 쉬어갈 수 있으니 일부는 이익을 챙겨두는 게 좋아요.
+
+💡 왜 이런 의견을 냈나요? (분석 요약)
+- 🏢 기업 실적/이슈: 최근 실적 발표가 예상보다 좋아서 주가가 급등했어요.
+- 📈 현재 차트 상태: RSI 78 (많이 올라서 비싸진 상태) 이고 볼린저 밴드 상단을 뚫었어요.
+- 🎯 전문가 전망: 증권사 평균 목표가와 거의 비슷한 수준까지 올라왔어요.
+
+💰 실전 대응 전략
+- 진입(살 가격): 250,000원 ~ 255,000원 부근
+- 목표(팔 가격): 1차: 270,000원 / 2차: 285,000원
+- 손절(위험 가격): 235,000원 이탈 시 손절 (20일선 붕괴 신호)"""
     parsed = _parse_response(sample_text)
     assert parsed is not None, "정상 형식 응답 파싱 실패"
     assert parsed["opinion"] == "일부익절", parsed
+    assert "RSI 78" in parsed["analysis"], parsed["analysis"]
+    assert "270,000원" in parsed["strategy"], parsed["strategy"]
 
     assert _parse_response("형식이 전혀 다른 응답") is None, "잘못된 형식인데 파싱이 성공함"
 
