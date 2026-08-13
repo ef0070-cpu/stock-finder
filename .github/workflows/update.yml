@@ -29,7 +29,7 @@ jobs:
 
       - run: python run_pipeline.py
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.MY_STOCKFINDER }}
 
       - name: Commit data.js if changed
         run: |
