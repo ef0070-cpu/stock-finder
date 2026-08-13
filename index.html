@@ -861,6 +861,16 @@
       if (macd > signal) return `MACD선(${macd})이 시그널선(${signal})보다 위예요 — 상승 쪽으로 전환되는 신호예요.`;
       return `MACD선(${macd})이 시그널선(${signal})보다 아래예요 — 하락 쪽으로 전환되는 신호예요.`;
     }
+    function beginnerBB(price, upper, lower) {
+      if (price >= upper) return `볼린저 밴드 상단(${upper})을 뚫었어요 — 단기적으로 많이 오른 과열 구간이에요.`;
+      if (price <= lower) return `볼린저 밴드 하단(${lower}) 근처예요 — 단기적으로 많이 눌린 침체 구간이에요.`;
+      return `볼린저 밴드 상단(${upper})·하단(${lower}) 사이예요 — 평범한 변동폭 안에 있어요.`;
+    }
+    function beginnerStoch(k, d) {
+      const zone = k >= 80 ? "과매수(단기 고점) 구간" : k <= 20 ? "과매도(단기 저점) 구간" : "중립 구간";
+      const cross = k > d ? "%K가 %D 위로 올라와 단기 매수 신호" : "%K가 %D 아래로 내려가 단기 매도 신호";
+      return `스토캐스틱은 ${zone}이고, ${cross}예요.`;
+    }
 
     function openOpinionModal(name, ticker, h, r, lv, displayOpinion) {
       document.getElementById("opinionModalTitle").textContent = `${name} (${ticker}) — 의견 설명`;
@@ -905,6 +915,8 @@
               <li>${beginnerRSI(r.rsi)}</li>
               <li>${beginnerMA(r.ma5, r.ma20)}</li>
               <li>${beginnerMACD(r.macd, r.macd_signal)}</li>
+              <li>${beginnerBB(r.price, r.bb_upper, r.bb_lower)}</li>
+              <li>${beginnerStoch(r.stoch_k, r.stoch_d)}</li>
             </ul>
             ${r.score != null ? `
             <p style="font-size:13px;color:var(--text-muted);margin-top:10px;line-height:1.5">
