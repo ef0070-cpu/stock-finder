@@ -9,6 +9,7 @@ run_pipeline.bat/서버 업데이트 버튼과는 완전히 독립적으로, 필
          아니라 소수 종목에만 LLM을 호출해 비용·시간을 억제한다. 개수는
          DISCOVER_KR_COUNT/DISCOVER_US_COUNT 환경변수로 조절한다.
 """
+import concurrent.futures
 import json
 import os
 import re
@@ -18,6 +19,7 @@ from itertools import zip_longest
 from typing import Optional
 
 import FinanceDataReader as fdr
+import pandas as pd
 import requests
 import yfinance as yf
 from bs4 import BeautifulSoup
@@ -67,17 +69,23 @@ def get_sp500_symbols() -> list[str]:
 
 
 def get_us_candidates(limit: int = US_LIMIT) -> list[tuple[str, str]]:
-    caps = []
-    for symbol in get_sp500_symbols():
+    symbols = get_sp500_symbols()
+
+    def _market_cap(symbol: str):
         try:
             cap = yf.Ticker(symbol).fast_info["marketCap"]
         except Exception as e:
             print(f"  {symbol} 시총 조회 실패: {e}")
-            continue
+            return None
         if cap is None:
             print(f"  {symbol} 시총 없음, 제외")
-            continue
-        caps.append((symbol, cap))
+        return cap
+
+    caps = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        for symbol, cap in zip(symbols, executor.map(_market_cap, symbols)):
+            if cap is not None:
+                caps.append((symbol, cap))
     caps.sort(key=lambda pair: pair[1], reverse=True)
     return [("us", symbol) for symbol, _ in caps[:limit]]
 
@@ -104,8 +112,8 @@ def fetch_fundamentals(market: str, ticker: str) -> tuple[Optional[float], Optio
         if df.empty:
             return None, None
         row = df.iloc[-1]
-        per = float(row["PER"]) if row["PER"] else None
-        div = float(row["DIV"]) if row["DIV"] else None
+        per = float(row["PER"]) if pd.notna(row["PER"]) else None
+        div = float(row["DIV"]) if pd.notna(row["DIV"]) else None
         return per, div
 
     info = yf.Ticker(ticker).info
@@ -260,7 +268,27 @@ def interleave(kr: list, us: list) -> list:
     ]
 
 
+def _read_count(env_name: str) -> int:
+    try:
+        return max(0, int(os.environ.get(env_name, FINAL_LIMIT_PER_MARKET)))
+    except ValueError:
+        return FINAL_LIMIT_PER_MARKET
+
+
 def main() -> None:
+    kr_limit = _read_count("DISCOVER_KR_COUNT")
+    us_limit = _read_count("DISCOVER_US_COUNT")
+    if kr_limit == 0 and us_limit == 0:
+        print("국내/해외 종목수량이 모두 0 — 발굴할 대상이 없어 기존 candidates.json을 그대로 두고 종료합니다.")
+        _write_progress({
+            "stage": "done",
+            "stage_label": "완료 (발굴 대상 없음)",
+            "done": True,
+            "error": "국내/해외 종목수량이 모두 0으로 설정되어 발굴을 건너뛰었습니다. 기존 candidates.json은 변경되지 않았습니다.",
+            "final_passed": None,
+        })
+        return
+
     progress = {
         "stage": 1,
         "stage_label": "1단계: 종목 발굴 (시총 상위 스크리닝)",
@@ -323,6 +351,8 @@ def main() -> None:
             "opinion": result["opinion"],
             "comment": result["comment"],
             "rsi": result["rsi"],
+            "ma5": result["ma5"],
+            "ma20": result["ma20"],
         }
         analyzed.append(entry)
         progress["analyzed"] += 1
@@ -341,14 +371,6 @@ def main() -> None:
         )[:8]
         _write_progress(progress)
 
-    def _read_count(env_name: str) -> int:
-        try:
-            return max(0, int(os.environ.get(env_name, FINAL_LIMIT_PER_MARKET)))
-        except ValueError:
-            return FINAL_LIMIT_PER_MARKET
-
-    kr_limit = _read_count("DISCOVER_KR_COUNT")
-    us_limit = _read_count("DISCOVER_US_COUNT")
     candidates = select_candidates(analyzed, kr_limit=kr_limit, us_limit=us_limit)
 
     print("PER/배당수익률 조회 및 태그 분류...")
@@ -411,4 +433,17 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        try:
+            with open(PROGRESS_FILE, encoding="utf-8") as f:
+                state = json.load(f)
+        except Exception:
+            state = {}
+        state["error"] = str(e)
+        state["done"] = True
+        _write_progress(state)
+        raise

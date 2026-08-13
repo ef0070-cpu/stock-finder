@@ -2,7 +2,10 @@ name: Update stock data
 
 on:
   schedule:
-    - cron: "0 22 * * 1-5"  # 매일 07:00 KST (평일) — 간밤 미국장 마감 직후, 국내장 개장 전
+    - cron: "0 22 * * 0-4"  # 매일 07:00 KST (평일) — 간밤 미국장 마감 직후, 국내장 개장 전
+    # cron은 UTC 기준이라 요일도 UTC 날짜로 판정됨. KST 07:00(=UTC 22:00 전날)이
+    # 월~금이 되려면 UTC 기준 전날은 일~목(0-4)이어야 함 — "1-5"였다면 화~토가 되어
+    # 월요일 아침이 갱신되지 않고 토요일 아침에 불필요하게 갱신되는 버그였음.
   workflow_dispatch: {}
 
 permissions:
@@ -34,7 +37,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.js history.json history.js
+          git add data.js
           git diff --cached --quiet || git commit -m "chore: update stock data"
           git push
 

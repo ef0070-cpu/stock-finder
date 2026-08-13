@@ -121,5 +121,3 @@ if __name__ == "__main__":
     assert stoch_k > 50, "꾸준한 상승 추세인데 스토캐스틱 %K가 낮음"
 
     print("indicators.py self-check 통과")
-
-    print("indicators.py self-check 통과")

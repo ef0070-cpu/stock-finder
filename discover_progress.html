@@ -245,6 +245,11 @@
     font-size: 15px;
     display: none;
   }
+  .done-banner.error {
+    background: rgba(239,90,90,.12);
+    border-color: var(--bad);
+    color: var(--bad);
+  }
 </style>
 </head>
 <body>
@@ -440,7 +445,12 @@ function render(state) {
   });
 
   const banner = document.getElementById("doneBanner");
-  if (state.done) {
+  banner.classList.remove("error");
+  if (state.error) {
+    banner.classList.add("error");
+    banner.style.display = "block";
+    banner.textContent = "오류로 중단됨: " + state.error;
+  } else if (state.done) {
     banner.style.display = "block";
     banner.innerHTML =
       "완료! 시장별 최고 후보 " + (state.final_passed ?? 0) + "개의 워런 버핏 검토까지 끝났습니다. candidates.json에 저장됨. " +

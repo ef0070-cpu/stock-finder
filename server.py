@@ -5,12 +5,12 @@ import http.server
 import json
 import os
 import re
-import socketserver
 import subprocess
 import sys
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 
+import kiwoom_balance
 import run_pipeline
 
 discover_process = None
@@ -99,6 +99,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._json(500, {"status": "error", "message": str(e)})
             return
 
+        if path == "/kiwoom/deposit":
+            # 보유종목 탭 "키움 잔고 불러오기" 버튼이 호출한다. kiwoom_config.json이
+            # 없거나 앱키가 비어 있으면 deposit이 null로 돌아오고, 화면에서 그 경우를
+            # "설정 필요"로 안내한다.
+            deposit = kiwoom_balance.get_deposit_krw()
+            self._json(200, {"status": "ok", "deposit": deposit})
+            return
+
         if path == "/fx":
             # 해외 종목 가격을 원화로 환산해 표시할 때 쓰는 참고 환율.
             try:
@@ -131,7 +139,7 @@ def main():
 
     print(f"\n서버 시작 (포트 {PORT}) - index.html의 '업데이트' 버튼이 이 서버를 호출합니다.")
     print("이 창을 닫으면 서버가 멈추고 업데이트 버튼도 동작하지 않습니다.")
-    with socketserver.TCPServer(("127.0.0.1", PORT), Handler) as httpd:
+    with http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler) as httpd:
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

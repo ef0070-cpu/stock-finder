@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<title>주식 트래커</title>
+<title>주식 파인더</title>
 <style>
   :root {
     --bg: #f1f5f9;
@@ -229,7 +229,7 @@
 </style>
 </head>
 <body>
-  <h1>주식 트래커</h1>
+  <h1>주식 파인더</h1>
   <div class="updated-at">
     <span id="updatedAt"></span>
     <button id="updateBtn">업데이트</button>
@@ -239,6 +239,7 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="finder">종목 파인더</button>
     <button class="tab-btn" data-tab="holdings">보유종목</button>
+    <button class="tab-btn" data-tab="trades">거래 내역</button>
   </div>
 
   <div class="tab-panel active" id="panel-finder">
@@ -298,6 +299,15 @@
           <th>티커</th><th>종목명</th><th>증권사</th><th>매입가</th><th>수량</th><th>현재가</th>
           <th>평가손익</th><th>손익률</th><th>의견</th><th>매수추천가</th><th>손절가</th><th>목표가</th><th>코멘트</th><th></th>
         </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="tab-panel" id="panel-trades">
+    <table id="tradesTable">
+      <thead>
+        <tr><th>날짜</th><th>구분</th><th>티커</th><th>종목명</th><th>수량</th><th>단가</th><th>실현손익</th></tr>
       </thead>
       <tbody></tbody>
     </table>
@@ -434,6 +444,11 @@
       return { buyLow, buyHigh, stopLoss, target };
     }
 
+    function pctVsBuy(level, basePrice) {
+      const pct = ((level / basePrice) - 1) * 100;
+      return (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
+    }
+
     // 국내/해외 종목 가격을 원화로 통일 표시. 해외는 usdKrwRate로 환산 —
     // server.py의 /fx(실시간)가 있으면 그 값을, 없으면(정적 배포 등) 아래 기본값을 쓴다.
     // 참고용 환산이며 투자/환전 조언이 아니다.
@@ -481,12 +496,13 @@
 
     function verdictBadge(c) {
       const ws = c.warren_score;
-      const verdict = ws?.verdict;
+      if (!ws) return { cls: "verdict-reject", text: "검토 미완료" };
+      const verdict = ws.verdict;
       if (verdict === "WAIT") return { cls: "verdict-wait", text: "관망" };
       if (verdict === "REJECT") return { cls: "verdict-reject", text: "제외" };
       if (c.opinion === "매도") return { cls: "opinion-sell", text: "매도" };
       if (c.opinion === "보유") return { cls: "opinion-hold", text: "보유" };
-      const hint = ws && ws.timing != null && ws.timing < 6 ? " (분할매수)" : "";
+      const hint = ws.timing != null && ws.timing < 6 ? " (분할매수)" : "";
       return { cls: "verdict-pass", text: "매수" + hint };
     }
 
@@ -571,6 +587,51 @@
       localStorage.setItem(REALIZED_KEY, JSON.stringify(list));
     }
 
+    // 매수/매도 거래 내역 — REALIZED_KEY(실현손익 합계 계산용)와 별개로, "거래 내역"
+    // 탭에서 사람이 훑어볼 수 있는 전체 매수·매도 로그를 그대로 남긴다.
+    const TRADES_KEY = "stock_app_trades";
+    function loadTrades() {
+      try {
+        return JSON.parse(localStorage.getItem(TRADES_KEY)) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+    function recordTrade(entry) {
+      const list = loadTrades();
+      list.push({ date: dateKey(today.getFullYear(), today.getMonth(), today.getDate()), ...entry });
+      localStorage.setItem(TRADES_KEY, JSON.stringify(list));
+    }
+    function renderTradesTab() {
+      const tbody = document.querySelector("#tradesTable tbody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      const trades = loadTrades().slice().reverse();
+      if (trades.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">거래 내역이 없습니다.</td></tr>';
+        return;
+      }
+      trades.forEach((t) => {
+        const r = getAnalysis(t.ticker);
+        const name = (r && r.name) || t.ticker;
+        const typeLabel = t.type === "sell" ? "매도" : "매수";
+        const typeCls = t.type === "sell" ? "opinion-sell" : "opinion-buy";
+        const pnlCell = t.realizedPnl != null
+          ? `<td class="${t.realizedPnl >= 0 ? "pnl-plus" : "pnl-minus"}">${formatPrice("kr", t.realizedPnl)}</td>`
+          : "<td>—</td>";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${t.date}</td>
+          <td><span class="opinion ${typeCls}">${typeLabel}</span></td>
+          <td>${escapeHtml(t.ticker)}</td>
+          <td>${escapeHtml(name)}</td>
+          <td>${t.quantity.toLocaleString("ko-KR")}</td>
+          <td>${formatPrice("kr", t.priceKrw)}</td>
+          ${pnlCell}`;
+        tbody.appendChild(tr);
+      });
+    }
+
     // 이 앱엔 포트폴리오 총자산의 과거 이력이 없었다 — 여기서부터 방문할 때마다
     // 오늘 날짜로 수익률 스냅샷을 남겨 실제 추이를 쌓아간다(가짜 과거 데이터는 안 만듦).
     const PORTFOLIO_HISTORY_KEY = "stock_app_portfolio_history";
@@ -647,6 +708,7 @@
         <div class="summary-card">
           <div class="summary-card-label">💵 현금 보유액</div>
           <input type="number" class="summary-card-cash-input" id="cashInput" value="${cash || ""}" placeholder="0 (직접 입력)" />
+          <button type="button" id="kiwoomFetchBtn" class="stock-card-add-btn" style="margin-top:4px;font-size:11px;padding:4px 0">키움 잔고 불러오기</button>
         </div>
         <div class="summary-card">
           <div class="summary-card-label">📊 현재 총자산</div>
@@ -665,6 +727,33 @@
         saveCash(parseFloat(e.target.value) || 0);
         renderPortfolioSummary();
       });
+
+      // 키움증권 REST API(kiwoom_balance.py, server.py의 /kiwoom/deposit)로 예수금을
+      // 읽어와 현금 보유액에 채운다 — 로컬 서버 필요, 웹호스팅 배포본에서는 숨김.
+      const kiwoomBtn = document.getElementById("kiwoomFetchBtn");
+      if (isHosted) {
+        kiwoomBtn.style.display = "none";
+      } else {
+        kiwoomBtn.addEventListener("click", async () => {
+          kiwoomBtn.disabled = true;
+          kiwoomBtn.textContent = "불러오는 중...";
+          try {
+            const res = await fetch("http://127.0.0.1:8765/kiwoom/deposit");
+            const json = await res.json();
+            if (json.status === "ok" && json.deposit != null) {
+              saveCash(json.deposit);
+              renderPortfolioSummary();
+              return;
+            }
+            alert("키움 잔고를 불러오지 못했습니다 — kiwoom_config.json에 앱키/시크릿을 설정했는지 확인하세요.");
+          } catch (e) {
+            alert("로컬 서버에 연결할 수 없습니다 — run_pipeline.bat을 먼저 실행해 두세요.");
+          } finally {
+            kiwoomBtn.disabled = false;
+            kiwoomBtn.textContent = "키움 잔고 불러오기";
+          }
+        });
+      }
 
       renderPortfolioChart(recordPortfolioSnapshot(totalReturn));
     }
@@ -768,8 +857,8 @@
             <p style="font-size:13px;color:var(--text-muted);line-height:1.5">
               매입가 ${formatPrice(h.market, h.buyPrice)}에 사셨는데 현재가 ${formatPrice(h.market, r.price)}는
               ${isStop
-                ? `손절 기준선 ${formatPrice(h.market, lv.stopLoss)}(매입가 대비 -8%)보다 낮아요.`
-                : `목표가 ${formatPrice(h.market, lv.target)}(매입가 대비 +15%)보다 높아요.`}
+                ? `손절 기준선 ${formatPrice(h.market, lv.stopLoss)}(매입가 대비 ${pctVsBuy(lv.stopLoss, h.buyPrice)})보다 낮아요.`
+                : `목표가 ${formatPrice(h.market, lv.target)}(매입가 대비 ${pctVsBuy(lv.target, h.buyPrice)})보다 높아요.`}
               아래 기술적 지표와 무관하게, <b>미리 정해둔 리스크 관리 기준에 닿았다는 뜻</b>이라 이 신호를 우선 보여드려요.
             </p>
           </div>`;
@@ -876,6 +965,7 @@
         h.quantity = newQty;
         saveHoldings(holdings);
         saveCash(loadCash() - priceKrw * qty);
+        recordTrade({ ticker: h.ticker, market: h.market, type: "buy", quantity: qty, priceKrw });
         alert(
           `${qty.toLocaleString("ko-KR")}주를 ${formatPrice("kr", priceKrw)}에 추가매수했습니다.\n` +
           `평균 매입단가가 ${formatPrice("kr", newAvgKrw)}(으)로 재계산됐고, 매수금액은 현금 잔고에서 차감됐습니다.`
@@ -892,6 +982,7 @@
         h.quantity -= qty;
         if (h.quantity <= 0) holdings.splice(idx, 1);
         saveHoldings(holdings);
+        recordTrade({ ticker: h.ticker, market: h.market, type: "sell", quantity: qty, priceKrw, realizedPnl: pnl });
         alert(
           `${qty.toLocaleString("ko-KR")}주를 ${formatPrice("kr", priceKrw)}에 매도했습니다.\n` +
           `실현손익 ${formatPrice("kr", pnl)} — 현금 잔고에 반영됐습니다.`
@@ -915,6 +1006,7 @@
 
     function renderHoldingsTab() {
       renderPortfolioSummary();
+      renderTradesTab();
       const tbody = document.querySelector("#holdingsTable tbody");
       tbody.innerHTML = "";
       const holdings = loadHoldings();
@@ -966,16 +1058,16 @@
           // — 예: 손절선은 넘었는데 RSI/MACD는 여전히 매수 우위 — 둘 다 보여준다.
           // 손절/익절은 매입가 기준 사실(risk-management)이라 기술적 지표보다 우선한다.
           const commentText = displayOpinion !== r.opinion
-            ? `매입가 대비 ${displayOpinion === "매도의견" ? "손절선(-8%) 도달" : "목표가(+15%) 도달"} · 기술적 지표는 참고: ${r.comment}`
+            ? `매입가 대비 ${displayOpinion === "매도의견" ? `손절선(${pctVsBuy(lv.stopLoss, h.buyPrice)}) 도달` : `목표가(${pctVsBuy(lv.target, h.buyPrice)}) 도달`} · 기술적 지표는 참고: ${r.comment}`
             : r.comment;
           tr.innerHTML = `
             <td>${h.ticker}</td>${nameCell}${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td><td>${formatPrice(h.market, r.price)}</td>
             <td class="${pnlClass}">${formatPrice(h.market, pnl)}</td>
             <td class="${pnlClass}">${pnlPct.toFixed(2)}%</td>
             <td><span class="opinion ${opinionClass(displayOpinion)}" title="매입가 대비 손절/목표가 도달 여부가 RSI·이평선·MACD 기술적 판정보다 우선 표시됩니다">${displayOpinion}</span></td>
-            <td title="매입가 대비 -2%~0% 구간 - 참고용, 투자 조언 아님">${formatPrice(h.market, lv.buyLow)} ~ ${formatPrice(h.market, lv.buyHigh)}</td>
-            <td title="매입가 대비 -8% - 현재가가 이 아래로 오면 '매도의견'으로 표시됨">${formatPrice(h.market, lv.stopLoss)}</td>
-            <td title="매입가 대비 +15% - 현재가가 이 위로 오면 '익절의견'으로 표시됨">${formatPrice(h.market, lv.target)}</td>
+            <td title="매입가 대비 ${pctVsBuy(lv.buyLow, h.buyPrice)}~${pctVsBuy(lv.buyHigh, h.buyPrice)} 구간 - 참고용, 투자 조언 아님">${formatPrice(h.market, lv.buyLow)} ~ ${formatPrice(h.market, lv.buyHigh)}</td>
+            <td title="매입가 대비 ${pctVsBuy(lv.stopLoss, h.buyPrice)} - 현재가가 이 아래로 오면 '매도의견'으로 표시됨">${formatPrice(h.market, lv.stopLoss)}</td>
+            <td title="매입가 대비 ${pctVsBuy(lv.target, h.buyPrice)} - 현재가가 이 위로 오면 '익절의견'으로 표시됨">${formatPrice(h.market, lv.target)}</td>
             <td style="text-align:left">${commentText}</td>
             <td></td>`;
           tr.querySelector(".opinion").addEventListener("click", () => {
@@ -1171,7 +1263,7 @@
         const badge = verdictBadge(c);
         const summary = c.buffett_review?.stage4?.summary || c.buffett_review?.stage3_conclusion || c.comment;
         const financeDetail = c.buffett_review?.checklist?.moat || c.buffett_review?.valuation || "";
-        const lv = priceLevels(c.price);
+        const lv = priceLevels(c.price, c);
 
         const card = document.createElement("div");
         card.className = "stock-card";
@@ -1278,6 +1370,7 @@
       holdings.push({ ticker, market, broker, buyPrice, quantity });
       saveHoldings(holdings);
       saveCash(loadCash() - buyPriceKrwInput * quantity);
+      recordTrade({ ticker, market, type: "buy", quantity, priceKrw: buyPriceKrwInput });
       document.getElementById("hTicker").value = "";
       document.getElementById("hBroker").value = "키움증권";
       document.getElementById("hBuyPrice").value = "";

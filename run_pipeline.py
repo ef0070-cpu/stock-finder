@@ -8,12 +8,10 @@ import yfinance as yf
 from pykrx import stock as pykrx_stock
 
 from indicators import compute_bollinger, compute_macd, compute_ma, compute_rsi, compute_stochastic
-from llm_opinion import generate_opinion
+from llm_opinion import generate_opinion, quant_fallback
 
 TICKERS_FILE = "tickers.json"
 OUTPUT_FILE = "data.js"
-HISTORY_JSON_FILE = "history.json"
-HISTORY_JS_FILE = "history.js"
 
 
 def fetch_kr_ohlc(ticker: str) -> pd.DataFrame:
@@ -43,7 +41,7 @@ def get_usd_krw_rate() -> float:
     return float(yf.Ticker("KRW=X").fast_info["lastPrice"])
 
 
-def analyze_ticker(market: str, ticker: str) -> dict:
+def analyze_ticker(market: str, ticker: str, use_llm: bool = True) -> dict:
     ohlc = fetch_kr_ohlc(ticker) if market == "kr" else fetch_us_ohlc(ticker)
     closes = ohlc["close"]
     if len(closes) < 30:
@@ -97,7 +95,10 @@ def analyze_ticker(market: str, ticker: str) -> dict:
         except Exception:
             pass
 
-    llm_result = generate_opinion(name, ticker, market, result["price"], result)
+    if use_llm:
+        llm_result = generate_opinion(name, ticker, market, result["price"], result)
+    else:
+        llm_result = quant_fallback(result["rsi"], result["ma5"], result["ma20"], result["macd"], result["macd_signal"])
     result["opinion"] = llm_result["opinion"]
     result["comment"] = llm_result["comment"]
     if llm_result.get("analysis"):
@@ -118,23 +119,6 @@ def load_tickers() -> list[tuple[str, str]]:
         for ticker in raw.get(market, []):
             pairs.append((market, ticker))
     return pairs
-
-
-def _load_history() -> dict:
-    try:
-        with open(HISTORY_JSON_FILE, encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-
-
-def _save_history(history: dict) -> None:
-    with open(HISTORY_JSON_FILE, "w", encoding="utf-8") as f:
-        json.dump(history, f, ensure_ascii=False, indent=2)
-    with open(HISTORY_JS_FILE, "w", encoding="utf-8") as f:
-        f.write("window.STOCK_HISTORY = ")
-        json.dump(history, f, ensure_ascii=False, indent=2)
-        f.write(";\n")
 
 
 def main() -> None:
@@ -161,11 +145,6 @@ def main() -> None:
         f.write("window.STOCK_DATA = ")
         json.dump(payload, f, ensure_ascii=False, indent=2)
         f.write(";\n")
-
-    today = datetime.now().strftime("%Y-%m-%d")
-    history = _load_history()
-    history[today] = {"results": results}
-    _save_history(history)
 
     ok_count = sum(1 for r in results.values() if "error" not in r)
     print(f"완료: {ok_count}/{len(results)}개 종목 분석 성공 → {OUTPUT_FILE} 저장")
