@@ -100,5 +100,107 @@ window.STOCK_HISTORY = {
         "name": "Rocket Lab Corporation"
       }
     }
+  },
+  "2026-08-13": {
+    "results": {
+      "005930": {
+        "market": "kr",
+        "price": 269000.0,
+        "change_pct": 5.28,
+        "rsi": 55.1,
+        "ma5": 245000.0,
+        "ma20": 243550.0,
+        "macd": -9392.75,
+        "macd_signal": -14486.5,
+        "score": 2,
+        "opinion": "매수",
+        "comment": "RSI 55.1 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+        "name": "삼성전자"
+      },
+      "000660": {
+        "market": "kr",
+        "price": 1611000.0,
+        "change_pct": 7.11,
+        "rsi": 45.5,
+        "ma5": 1476400.0,
+        "ma20": 1622300.0,
+        "macd": -156170.15,
+        "macd_signal": -170822.14,
+        "score": 0,
+        "opinion": "보유",
+        "comment": "RSI 45.5 중립, 데드크로스, MACD 상승전환 → 보유 우위",
+        "name": "SK하이닉스"
+      },
+      "145720": {
+        "market": "kr",
+        "price": 40950.0,
+        "change_pct": -1.33,
+        "rsi": 57.3,
+        "ma5": 42070.0,
+        "ma20": 39477.5,
+        "macd": 266.45,
+        "macd_signal": -286.37,
+        "score": 2,
+        "opinion": "매수",
+        "comment": "RSI 57.3 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+        "name": "덴티움"
+      },
+      "AAPL": {
+        "market": "us",
+        "price": 302.25,
+        "change_pct": -0.87,
+        "rsi": 37.4,
+        "ma5": 308.1,
+        "ma20": 321.0,
+        "macd": -1.68,
+        "macd_signal": 1.63,
+        "score": -2,
+        "opinion": "매도",
+        "comment": "RSI 37.4 중립, 데드크로스, MACD 하락전환 → 매도 우위",
+        "name": "Apple Inc."
+      },
+      "MSFT": {
+        "market": "us",
+        "price": 492.43,
+        "change_pct": -2.26,
+        "rsi": 85.9,
+        "ma5": 500.4,
+        "ma20": 440.4,
+        "macd": 29.77,
+        "macd_signal": 22.91,
+        "score": 1,
+        "opinion": "보유",
+        "comment": "RSI 85.9 과매수, 골든크로스, MACD 상승전환 → 보유 우위",
+        "name": "Microsoft Corporation"
+      },
+      "PLTR": {
+        "market": "us",
+        "price": 171.04,
+        "change_pct": -2.23,
+        "rsi": 76.8,
+        "ma5": 169.8,
+        "ma20": 141.2,
+        "macd": 11.25,
+        "macd_signal": 6.35,
+        "score": 1,
+        "opinion": "보유",
+        "comment": "RSI 76.8 과매수, 골든크로스, MACD 상승전환 → 보유 우위",
+        "name": "Palantir Technologies Inc."
+      },
+      "RKLB": {
+        "market": "us",
+        "price": 81.17,
+        "change_pct": 1.45,
+        "rsi": 62.2,
+        "ma5": 79.9,
+        "ma20": 70.6,
+        "macd": -1.45,
+        "macd_signal": -4.37,
+        "score": 2,
+        "opinion": "매수",
+        "comment": "RSI 62.2 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+        "name": "Rocket Lab Corporation"
+      }
+    }
   }
 };
