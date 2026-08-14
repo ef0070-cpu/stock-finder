@@ -33,16 +33,22 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - name: Configure git
+        # discover.py가 실행 중 단계마다 discover_progress.json을 직접 커밋/푸시해서
+        # (진행상황 실시간 표시용) 여기서 미리 identity를 잡아둬야 한다.
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - run: python discover.py
         env:
           ANTHROPIC_API_KEY: ${{ secrets.MY_STOCKFINDER }}
           DISCOVER_KR_COUNT: ${{ github.event.inputs.kr_count }}
           DISCOVER_US_COUNT: ${{ github.event.inputs.us_count }}
+          GITHUB_ACTIONS: "true"
 
       - name: Commit candidates/report if changed
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add candidates.json candidates.js discover_progress.json reports/
           git diff --cached --quiet || git commit -m "chore: run stock discovery"
           git pull --rebase origin main

@@ -2,17 +2,20 @@
 server.py의 /discover 엔드포인트를 통해 이 스크립트를 실행한다.
 run_pipeline.bat/서버 업데이트 버튼과는 완전히 독립적으로, 필요할 때 직접 실행한다.
 
-1단계: 국내 시총 100 + 미국 S&P500 시총 100 스크리닝
+1단계: 국내 시총 100 + 미국 S&P500 시총 100 스크리닝 → PER/PBR/ROE 재무적 분석으로 필터링
 2단계: 저렴한 퀀트 점수식(RSI/MA/MACD)으로 기술적 필터링
-3~4단계: 시장(국내/미국)별로 사용자가 지정한 개수만큼(기본 1개씩)의 최고 후보만
-         골라 Claude(웹검색)로 워런 버핏 체크리스트 심층 리뷰 — 전수(최대 200종목)가
-         아니라 소수 종목에만 LLM을 호출해 비용·시간을 억제한다. 개수는
-         DISCOVER_KR_COUNT/DISCOVER_US_COUNT 환경변수로 조절한다.
+3단계: 시장(국내/미국)별로 사용자가 지정한 개수만큼(기본 1개씩)의 최고 후보만
+       골라 Claude(웹검색)로 워런 버핏 체크리스트 심층 리뷰 — 전수(최대 200종목)가
+       아니라 소수 종목에만 LLM을 호출해 비용·시간을 억제한다. 개수는
+       DISCOVER_KR_COUNT/DISCOVER_US_COUNT 환경변수로 조절한다.
+4단계: 3단계에서 PASS 판정을 받은 종목만 최종 채택 — WAIT/REJECT는 결과에 남기지 않는다
+       (보고서·앱 카드 모두 "지금 시점 매수 추천" 종목만 보이게 하기 위함).
 """
 import concurrent.futures
 import json
 import os
 import re
+import subprocess
 from datetime import datetime, timedelta
 from html import escape
 from itertools import zip_longest
@@ -35,12 +38,56 @@ KR_LIMIT = 100
 US_LIMIT = 100
 FINAL_LIMIT_PER_MARKET = 1
 
+# ponytail: 1단계 재무 필터는 "명백한 적신호"만 거른다(적자·자본잠식) — PER/PBR
+# 고평가 여부는 걸러내지 않는다(그건 3단계 버핏 심사역이 밸류에이션으로 따로 판단).
+# 조회 실패(데이터 없음)는 판단 보류로 통과시킨다 — KRX 재무 API가 간헐적으로
+# 빈 응답을 주는 걸 이미 확인했음(discover_run.log 참고), 데이터 없다고 종목을
+# 무작정 걸러내면 그 원인이 KRX 쪽 일시 장애일 때 후보가 텅 빌 수 있다.
+MIN_ROE_PCT = 0.0  # 이 값 미만이면 제외(자본 까먹는 중)
+
+
+def passes_financial_filter(per: Optional[float], roe: Optional[float]) -> bool:
+    if per is not None and per <= 0:  # 적자(주당순이익 마이너스)
+        return False
+    if roe is not None and roe < MIN_ROE_PCT:
+        return False
+    return True
+
+
+def _selftest() -> None:
+    assert passes_financial_filter(10, 15) is True
+    assert passes_financial_filter(-5, 15) is False, "PER 적자(음수)인데 통과함"
+    assert passes_financial_filter(10, -3) is False, "ROE 음수(자본잠식)인데 통과함"
+    assert passes_financial_filter(None, None) is True, "재무데이터 없으면 판단보류로 통과해야 함"
+
 
 def _write_progress(state: dict) -> None:
     state["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(PROGRESS_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False)
         f.flush()
+
+
+def _commit_progress_checkpoint(label: str) -> None:
+    """GitHub Actions 안에서만: discover_progress.json을 커밋/푸시해 웹호스팅 버전 앱이
+    원격에서 폴링하며 단계별 진행상황을 실시간에 가깝게 보여줄 수 있게 한다.
+    로컬 실행(server.py)에서는 파일을 직접 폴링하므로 이 함수가 아무것도 하지 않는다.
+    커밋/푸시 실패는 진행표시 기능일 뿐이므로 무시하고 파이프라인을 계속 진행한다."""
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return
+    try:
+        subprocess.run(["git", "add", PROGRESS_FILE], check=True, capture_output=True)
+        commit = subprocess.run(
+            ["git", "commit", "-m", f"progress: {label}"], capture_output=True, text=True
+        )
+        if commit.returncode != 0:
+            return  # 이전 커밋과 상태가 같음 등 — 조용히 넘어간다
+        subprocess.run(
+            ["git", "pull", "--rebase", "origin", "main"], check=True, capture_output=True
+        )
+        subprocess.run(["git", "push"], check=True, capture_output=True)
+    except Exception as e:
+        print(f"  진행상황 커밋 실패(무시하고 계속): {e}")
 
 
 def filter_common_stocks(codes: list[str]) -> list[str]:
@@ -90,6 +137,58 @@ def get_us_candidates(limit: int = US_LIMIT) -> list[tuple[str, str]]:
     return [("us", symbol) for symbol, _ in caps[:limit]]
 
 
+def fetch_kr_financials(tickers: list[str]) -> dict[str, dict]:
+    """전종목 PER/PBR/ROE(근사)을 한 번에 조회한다(최근 영업일을 최대 5일 거슬러 시도).
+    ROE는 EPS/BPS*100으로 근사한다(배당·자사주매입은 반영 안 되는 단순 추정치).
+    KRX 재무 API가 응답을 못 주면(관측된 바 있음) 빈 dict를 반환 — 호출부가 종목별로
+    "데이터 없음 → 판단 보류로 통과"로 처리한다."""
+    end = datetime.now()
+    for i in range(6):
+        date_str = (end - timedelta(days=i)).strftime("%Y%m%d")
+        try:
+            df = pykrx_stock.get_market_fundamental_by_ticker(date_str, market="ALL")
+        except Exception as e:
+            print(f"  KR 재무데이터 조회 실패({date_str}): {e}")
+            continue
+        if df.empty:
+            continue
+        result = {}
+        for ticker in tickers:
+            if ticker not in df.index:
+                continue
+            row = df.loc[ticker]
+            per = float(row["PER"]) if pd.notna(row["PER"]) else None
+            pbr = float(row["PBR"]) if pd.notna(row["PBR"]) else None
+            eps = float(row["EPS"]) if pd.notna(row["EPS"]) else None
+            bps = float(row["BPS"]) if pd.notna(row["BPS"]) else None
+            roe = round(eps / bps * 100, 2) if eps is not None and bps else None
+            result[ticker] = {"per": per, "pbr": pbr, "roe": roe}
+        return result
+    print("  KR 재무데이터 전체 조회 실패 — 1단계 재무 필터를 전종목 판단보류로 통과시킵니다.")
+    return {}
+
+
+def fetch_us_financials(symbols: list[str]) -> dict[str, dict]:
+    def _fetch(symbol: str):
+        try:
+            info = yf.Ticker(symbol).info
+        except Exception as e:
+            print(f"  {symbol} 재무데이터 조회 실패: {e}")
+            return symbol, None
+        per = info.get("trailingPE")
+        pbr = info.get("priceToBook")
+        roe_raw = info.get("returnOnEquity")
+        roe = round(roe_raw * 100, 2) if isinstance(roe_raw, (int, float)) else None
+        return symbol, {"per": per, "pbr": pbr, "roe": roe}
+
+    result = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        for symbol, data in executor.map(_fetch, symbols):
+            if data is not None:
+                result[symbol] = data
+    return result
+
+
 def classify_tags(per: Optional[float], dividend_yield: Optional[float]) -> list[str]:
     # ponytail: PER>=25 as a growth-stock proxy (no earnings-growth data in this
     # pipeline) — upgrade to real revenue/EPS growth if precision matters later.
@@ -119,7 +218,10 @@ def fetch_fundamentals(market: str, ticker: str) -> tuple[Optional[float], Optio
     info = yf.Ticker(ticker).info
     per = info.get("trailingPE")
     raw_yield = info.get("dividendYield")
-    div = round(raw_yield * 100, 2) if isinstance(raw_yield, (int, float)) and raw_yield < 1 else raw_yield
+    # yfinance는 dividendYield를 이미 %단위 숫자로 준다(예: 0.44는 0.44%) — 예전엔 0~1
+    # 소수(0.0044)였어서 *100 보정이 있었는데, 지금은 그 보정이 NVDA 배당수익률을
+    # 45%로 만드는 등 값을 열 배 넘게 부풀리는 버그였다. 그대로 반환한다.
+    div = round(raw_yield, 2) if isinstance(raw_yield, (int, float)) else None
     return per, div
 
 
@@ -156,8 +258,9 @@ def write_report(candidates: list[dict], date: str) -> None:
 
     md = [f"# 종목 발굴 보고서 ({date})", ""]
     md.append(
-        "**파이프라인**: 1단계 종목발굴(국내 시총 100 + 미국 S&P500 시총 100) → "
-        "2단계 기술적지표 필터 → 3~4단계 워런버핏 검토(시장별 지정 개수만큼 최고 후보)"
+        "**파이프라인**: 1단계 재무적 분석(시총 상위 스크리닝 → PER/ROE 필터) → "
+        "2단계 기술적 분석(RSI/이동평균/MACD) → 3단계 워런버핏 검토(시장별 지정 개수만큼 최고 후보) → "
+        "4단계 최종 종목 결정(PASS 판정만 채택)"
     )
     md.append("")
     if not passed:
@@ -276,6 +379,7 @@ def _read_count(env_name: str) -> int:
 
 
 def main() -> None:
+    _selftest()
     kr_limit = _read_count("DISCOVER_KR_COUNT")
     us_limit = _read_count("DISCOVER_US_COUNT")
     if kr_limit == 0 and us_limit == 0:
@@ -291,10 +395,13 @@ def main() -> None:
 
     progress = {
         "stage": 1,
-        "stage_label": "1단계: 종목 발굴 (시총 상위 스크리닝)",
+        "stage_label": "1단계: 재무적 분석 (시총 스크리닝 → PER/ROE 필터)",
         "kr_done": False,
         "us_done": False,
         "candidates_found": 0,
+        "financial_total": 0,
+        "financial_checked": 0,
+        "financial_passed": 0,
         "analyzed": 0,
         "total_to_analyze": 0,
         "buy_found": 0,
@@ -308,20 +415,41 @@ def main() -> None:
     }
     _write_progress(progress)
 
-    print("1단계: 종목 발굴 (시총 상위 스크리닝)...")
+    print("1단계: 시총 상위 스크리닝...")
     kr_candidates = get_kr_candidates()
     progress["kr_done"] = True
     _write_progress(progress)
 
     us_candidates = get_us_candidates()
     progress["us_done"] = True
-    pairs = interleave(kr_candidates, us_candidates)
-    progress["candidates_found"] = len(pairs)
-    print(f"  후보 {len(pairs)}개 확보")
+    screened = interleave(kr_candidates, us_candidates)
+    progress["candidates_found"] = len(screened)
+    print(f"  시총 상위 후보 {len(screened)}개 확보")
+    _write_progress(progress)
+
+    print("1단계: 재무적 분석 (PER/ROE 필터)...")
+    kr_financials = fetch_kr_financials([t for m, t in screened if m == "kr"])
+    us_financials = fetch_us_financials([t for m, t in screened if m == "us"])
+    financials = {**kr_financials, **us_financials}
+
+    pairs = []
+    progress["financial_total"] = len(screened)
+    for market, ticker in screened:
+        fin = financials.get(ticker)
+        progress["financial_checked"] += 1
+        if fin is None:
+            pairs.append((market, ticker))  # 데이터 없음 — 판단 보류로 통과
+            continue
+        if passes_financial_filter(fin["per"], fin["roe"]):
+            pairs.append((market, ticker))
+            progress["financial_passed"] += 1
+    _write_progress(progress)
+    print(f"  재무 필터 통과 {len(pairs)} / {len(screened)}개 (데이터 없어 판단보류 포함)")
+    _commit_progress_checkpoint("1단계 완료")
 
     print("2단계: 기술적 지표 분석...")
     progress["stage"] = 2
-    progress["stage_label"] = "2단계: 기술적 지표 분석"
+    progress["stage_label"] = "2단계: 기술적 분석 (RSI/이동평균/MACD)"
     progress["total_to_analyze"] = len(pairs)
     _write_progress(progress)
 
@@ -331,7 +459,7 @@ def main() -> None:
         try:
             # 200개 안팎을 스크리닝하는 단계라 LLM 호출은 비용/시간이 너무 크다 —
             # 여기선 저렴한 퀀트 점수식으로만 1차 필터링하고, 상위 종목의 정밀 분석은
-            # 별도로(3~4단계, 워런버핏 검토) 처리한다.
+            # 별도로(3단계, 워런버핏 검토) 처리한다.
             result = analyze_ticker(market, ticker, use_llm=False)
         except Exception as e:
             print(f"  [{market}] {ticker} 분석 실패: {e}")
@@ -374,6 +502,7 @@ def main() -> None:
         _write_progress(progress)
 
     candidates = select_candidates(analyzed, kr_limit=kr_limit, us_limit=us_limit)
+    _commit_progress_checkpoint("2단계 완료")
 
     print("PER/배당수익률 조회 및 태그 분류...")
     for c in candidates:
@@ -386,11 +515,12 @@ def main() -> None:
         c["dividend_yield"] = round(div, 2) if div is not None else None
         c["tags"] = classify_tags(per, div)
 
-    print(f"3~4단계: 워런 버핏 체크리스트 심층 리뷰 (국내 {kr_limit}개 · 미국 {us_limit}개)...")
+    print(f"3단계: 워런 버핏 체크리스트 심층 리뷰 (국내 {kr_limit}개 · 미국 {us_limit}개)...")
     progress["stage"] = 3
-    progress["stage_label"] = "3~4단계: 워런 버핏 체크리스트 심층 리뷰"
+    progress["stage_label"] = "3단계: 워런 버핏 검토"
     progress["review_total"] = len(candidates)
     _write_progress(progress)
+    _commit_progress_checkpoint("3단계 시작")
 
     for c in candidates:
         progress["review_current"] = {"market": c["market"], "ticker": c["ticker"], "name": c["name"]}
@@ -403,15 +533,28 @@ def main() -> None:
             c["buffett_review"] = review["buffett_review"]
         progress["review_done"] += 1
         _write_progress(progress)
+        _commit_progress_checkpoint(f"3단계 리뷰 {progress['review_done']}/{progress['review_total']}")
 
     progress["stage"] = 4
-    progress["stage_label"] = "4단계: 최종 결과 저장"
+    progress["stage_label"] = "4단계: 최종 종목 결정 (PASS 판정만 채택)"
     progress["review_current"] = None
     _write_progress(progress)
 
+    # 4단계: PASS 판정을 받은 종목만 "지금 시점 매수 추천"으로 최종 채택한다.
+    # WAIT/REJECT는 기술적으로는 매수 신호였지만 버핏 심사역이 보류·기각한
+    # 종목이므로 결과에 남기지 않는다(보고서·앱 카드 노출 기준을 일치시키기 위함).
+    wait_count = sum(1 for c in candidates if c.get("warren_score", {}).get("verdict") == "WAIT")
+    reject_count = sum(1 for c in candidates if c.get("warren_score", {}).get("verdict") == "REJECT")
+    unreviewed_count = sum(1 for c in candidates if "warren_score" not in c)
+    final_candidates = [c for c in candidates if c.get("warren_score", {}).get("verdict") == "PASS"]
+    print(
+        f"  4단계 판정 결과 — PASS {len(final_candidates)} / WAIT {wait_count} / "
+        f"REJECT {reject_count} / 리뷰실패(미판정) {unreviewed_count}"
+    )
+
     payload = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "candidates": candidates,
+        "candidates": final_candidates,
     }
     with open(CANDIDATES_FILE, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -421,17 +564,17 @@ def main() -> None:
         f.write(";\n")
 
     report_date = datetime.now().strftime("%Y-%m-%d")
-    write_report(candidates, report_date)
+    write_report(final_candidates, report_date)
 
     progress["stage"] = "done"
     progress["stage_label"] = "완료"
     progress["current"] = None
     progress["done"] = True
-    progress["final_passed"] = len(candidates)
+    progress["final_passed"] = len(final_candidates)
     _write_progress(progress)
+    _commit_progress_checkpoint("완료")
 
-    pass_count = sum(1 for c in candidates if c.get("warren_score", {}).get("verdict") == "PASS")
-    print(f"완료: 최고 후보 {len(candidates)}개 검토 (PASS {pass_count}개) → {CANDIDATES_FILE}, reports/{report_date}-발굴보고서.html 저장")
+    print(f"완료: 최종 매수 추천 {len(final_candidates)}개 (검토 {len(candidates)}개 중 PASS) → {CANDIDATES_FILE}, reports/{report_date}-발굴보고서.html 저장")
 
 
 if __name__ == "__main__":

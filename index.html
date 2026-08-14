@@ -379,10 +379,11 @@
   <script src="candidates.js"></script>
   <script>
     const STOCK_DATA = window.STOCK_DATA || { updated_at: "데이터 없음 (run_pipeline.bat 먼저 실행)", results: {} };
-    // 종목 파인더 데이터(discover.py 산출물) — 3~4단계(버핏 리뷰)를 거치지 못했거나
-    // REJECT(버핏 기준 미달) 판정인 종목은 검색/카드 대상에서 제외
+    // 종목 파인더 데이터(discover.py 산출물) — discover.py가 이미 4단계에서 PASS 판정
+    // 종목만 candidates.json에 남기므로(WAIT/REJECT는 저장 단계에서 제외됨) 여기서는
+    // 방어적으로만 다시 확인한다.
     const CANDIDATES_DATA = window.CANDIDATES_DATA || { generated_at: "데이터 없음 (discover.py 먼저 실행)", candidates: [] };
-    const SEARCHABLE_CANDIDATES = CANDIDATES_DATA.candidates.filter((c) => c.warren_score && c.warren_score.verdict !== "REJECT");
+    const SEARCHABLE_CANDIDATES = CANDIDATES_DATA.candidates.filter((c) => c.warren_score && c.warren_score.verdict === "PASS");
     const HOLDINGS_KEY = "stock_app_holdings";
 
     function escapeHtml(s) {
@@ -1243,8 +1244,9 @@
         grid.appendChild(cell);
       }
 
-      const passCount = SEARCHABLE_CANDIDATES.filter((c) => c.warren_score?.verdict === "PASS").length;
-      const waitCount = SEARCHABLE_CANDIDATES.filter((c) => c.warren_score?.verdict === "WAIT").length;
+      // SEARCHABLE_CANDIDATES는 이미 4단계에서 PASS 판정만 통과한 종목이라
+      // 전부 PASS다 — 매수 추천 건수만 보여준다.
+      const passCount = SEARCHABLE_CANDIDATES.length;
 
       for (let d = 1; d <= daysInMonth; d++) {
         const key = dateKey(finderCalYear, finderCalMonth, d);
@@ -1252,7 +1254,7 @@
         const cell = document.createElement("div");
         cell.className = "cal-cell" + (hasData ? " has-data" : "") + (key === todayKey ? " today" : "");
         const itemHtml = hasData
-          ? `<div class="cal-item">매수의견 ${passCount}건,관망 ${waitCount}건</div>`
+          ? `<div class="cal-item">매수 추천 ${passCount}건</div>`
           : "";
         cell.innerHTML = `<div class="cal-date">${d}</div>${itemHtml}`;
         if (hasData) cell.addEventListener("dblclick", openFinderModal);
@@ -1317,8 +1319,9 @@
         );
         if (res.status === 204) {
           status.innerHTML =
-            '실행 시작됨 — 완료까지 약 3~5분, 새로고침해 확인하세요. ' +
-            `<a href="https://github.com/${GH_REPO}/actions/workflows/discover.yml" target="_blank">진행상황 보기 →</a>`;
+            '실행 시작됨 — 완료까지 약 3~5분. ' +
+            `<a href="https://github.com/${GH_REPO}/actions/workflows/discover.yml" target="_blank">GitHub Actions에서 보기 →</a>`;
+          window.open(`discover_progress.html?repo=${GH_REPO}`, "_blank");
         } else if (res.status === 401 || res.status === 403) {
           localStorage.removeItem(GH_TOKEN_KEY);
           status.textContent = "토큰이 유효하지 않습니다 — 버튼을 다시 눌러 새 토큰을 입력해 주세요.";

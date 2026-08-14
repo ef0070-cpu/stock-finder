@@ -260,7 +260,7 @@
   <div class="agents">
     <div id="agentScout" class="agent idle">
       <div class="agent-name">스카우트</div>
-      <div class="agent-role">1단계 · 종목 발굴</div>
+      <div class="agent-role">1단계 · 재무적 분석</div>
       <div class="stage-area">
         <div class="candles">
           <span style="height:30%"></span><span style="height:55%"></span>
@@ -275,7 +275,7 @@
 
     <div id="agentAnalyst" class="agent idle">
       <div class="agent-name">애널리스트</div>
-      <div class="agent-role">2단계 · 기술적 지표 분석</div>
+      <div class="agent-role">2단계 · 기술적 분석</div>
       <div class="stage-area">
         <svg class="chart-line" viewBox="0 0 76 40">
           <path d="M2,32 L16,20 L30,26 L44,10 L58,16 L74,4" />
@@ -303,7 +303,7 @@
 
     <div id="agentFinal" class="agent idle">
       <div class="agent-name">최종 결정관</div>
-      <div class="agent-role">4단계 · 최종 결정의견</div>
+      <div class="agent-role">4단계 · 최종 종목 결정</div>
       <div class="stage-area">
         <div class="stampzone">
           <div class="paper"></div>
@@ -317,23 +317,32 @@
 
   <div class="bar-wrap">
     <div class="bar-label">
-      <span>2단계 분석 진행률</span>
-      <span id="barText">0 / 0</span>
+      <span>1단계 재무적 분석 진행률 (PER·ROE 필터)</span>
+      <span id="finBarText">0 / 0</span>
     </div>
-    <div class="bar-track"><div id="barFill" class="bar-fill"></div></div>
+    <div class="bar-track"><div id="finBarFill" class="bar-fill"></div></div>
   </div>
 
   <div class="cards">
-    <div class="card"><div id="candCount" class="num">0</div><div class="label">1단계 후보 확보</div></div>
+    <div class="card"><div id="candCount" class="num">0</div><div class="label">시총 상위 확보</div></div>
+    <div class="card"><div id="finPassed" class="num">0</div><div class="label">재무 필터 통과</div></div>
     <div class="card"><div id="buyFound" class="num">0</div><div class="label">매수 의견 발견</div></div>
-    <div class="card"><div id="finalPassed" class="num">-</div><div class="label">최종 선정</div></div>
+    <div class="card"><div id="finalPassed" class="num">-</div><div class="label">최종 매수 추천(PASS)</div></div>
+  </div>
+
+  <div class="bar-wrap">
+    <div class="bar-label">
+      <span>2단계 기술적 분석 진행률</span>
+      <span id="barText">0 / 0</span>
+    </div>
+    <div class="bar-track"><div id="barFill" class="bar-fill"></div></div>
   </div>
 
   <div class="current">현재 처리 중: <b id="currentTicker">대기 중...</b></div>
 
   <div class="bar-wrap">
     <div class="bar-label">
-      <span>3~4단계 워런 버핏 리뷰 진행률</span>
+      <span>3단계 워런 버핏 검토 진행률</span>
       <span id="reviewBarText">0 / 0</span>
     </div>
     <div class="bar-track"><div id="reviewBarFill" class="bar-fill"></div></div>
@@ -400,6 +409,13 @@ function render(state) {
   );
 
   document.getElementById("candCount").textContent = state.candidates_found || 0;
+  document.getElementById("finPassed").textContent = state.financial_passed || 0;
+
+  const finTotal = state.financial_total || 0;
+  const finChecked = state.financial_checked || 0;
+  const finPct = finTotal ? Math.round((finChecked / finTotal) * 100) : 0;
+  document.getElementById("finBarFill").style.width = finPct + "%";
+  document.getElementById("finBarText").textContent = finChecked + " / " + finTotal;
 
   const total = state.total_to_analyze || 0;
   const analyzed = state.analyzed || 0;
@@ -452,25 +468,40 @@ function render(state) {
     banner.textContent = "오류로 중단됨: " + state.error;
   } else if (state.done) {
     banner.style.display = "block";
+    const reportDate = (state.updated_at || "").split(" ")[0];
+    const reportHref = IS_REMOTE ? `reports/${reportDate}-발굴보고서.html` : "/report";
     banner.innerHTML =
-      "완료! 시장별 최고 후보 " + (state.final_passed ?? 0) + "개의 워런 버핏 검토까지 끝났습니다. candidates.json에 저장됨. " +
-      '<a href="/report" target="_blank" style="color:inherit;text-decoration:underline;">발굴 보고서 열기 →</a>';
+      "완료! 최종 매수 추천(PASS) " + (state.final_passed ?? 0) + "개 확정. candidates.json에 저장됨. " +
+      `<a href="${reportHref}" target="_blank" style="color:inherit;text-decoration:underline;">발굴 보고서 열기 →</a>`;
   } else {
     banner.style.display = "none";
   }
 }
 
+// 웹호스팅(GitHub Actions) 버전에서 열릴 때는 ?repo=owner/name 쿼리로 원격 저장소를
+// 넘겨받아, 로컬 서버 대신 discover.py가 단계마다 커밋해둔 discover_progress.json을
+// raw.githubusercontent.com에서 직접 폴링한다. CDN 캐시 때문에 로컬보다 반영이
+// 몇 초~수십 초 늦을 수 있어 폴링 주기를 더 길게 둔다.
+const REMOTE_REPO = new URLSearchParams(location.search).get("repo");
+const IS_REMOTE = !!REMOTE_REPO;
+if (IS_REMOTE) {
+  document.querySelector("h1").textContent += " (웹호스팅 · 원격 폴링, 반영이 다소 늦을 수 있음)";
+}
+
 async function poll() {
   try {
-    const res = await fetch("/discover_progress.json", { cache: "no-store" });
+    const url = IS_REMOTE
+      ? `https://raw.githubusercontent.com/${REMOTE_REPO}/main/discover_progress.json?t=${Date.now()}`
+      : "/discover_progress.json";
+    const res = await fetch(url, { cache: "no-store" });
     if (res.ok) render(await res.json());
   } catch (e) {
-    // 서버 준비 전이거나 일시적 오류 - 다음 폴링에서 재시도
+    // 서버/네트워크 준비 전이거나 일시적 오류 - 다음 폴링에서 재시도
   }
 }
 
 poll();
-setInterval(poll, 1000);
+setInterval(poll, IS_REMOTE ? 5000 : 1000);
 </script>
 </body>
 </html>
