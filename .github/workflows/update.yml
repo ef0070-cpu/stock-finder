@@ -6,7 +6,16 @@ on:
     # cron은 UTC 기준이라 요일도 UTC 날짜로 판정됨. KST 07:00(=UTC 22:00 전날)이
     # 월~금이 되려면 UTC 기준 전날은 일~목(0-4)이어야 함 — "1-5"였다면 화~토가 되어
     # 월요일 아침이 갱신되지 않고 토요일 아침에 불필요하게 갱신되는 버그였음.
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      add_kr:
+        description: "tickers.json에 추가할 국내 티커(선택, 보유종목 자동 등록용)"
+        default: ""
+        type: string
+      add_us:
+        description: "tickers.json에 추가할 해외 티커(선택, 보유종목 자동 등록용)"
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -29,15 +38,38 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - name: Add ticker to tickers.json if requested
+        env:
+          ADD_KR: ${{ github.event.inputs.add_kr }}
+          ADD_US: ${{ github.event.inputs.add_us }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          add_kr = os.environ.get("ADD_KR", "").strip()
+          add_us = os.environ.get("ADD_US", "").strip()
+          if add_kr or add_us:
+              with open("tickers.json", encoding="utf-8") as f:
+                  data = json.load(f)
+              if add_kr and add_kr not in data["kr"]:
+                  data["kr"].append(add_kr)
+              if add_us and add_us not in data["us"]:
+                  data["us"].append(add_us)
+              with open("tickers.json", "w", encoding="utf-8") as f:
+                  json.dump(data, f, ensure_ascii=False, indent=2)
+                  f.write("\n")
+          PY
+
       - run: python run_pipeline.py
         env:
           ANTHROPIC_API_KEY: ${{ secrets.MY_STOCKFINDER }}
 
-      - name: Commit data.js if changed
+      - name: Commit data.js/tickers.json if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.js
+          git add data.js tickers.json
           git diff --cached --quiet || git commit -m "chore: update stock data"
           git push
 

@@ -529,6 +529,7 @@
 
     const liveCache = {};
     const liveLoading = new Set();
+    const hostedRegister = {}; // ticker -> { message } — 웹호스팅에서 신규 티커 자동 등록 요청 상태
 
     function getAnalysis(ticker) {
       if (liveCache[ticker]) return liveCache[ticker];
@@ -1125,6 +1126,15 @@
               <td>${h.ticker}</td>${nameCell}${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
               <td colspan="8" class="no-data">실시간 시세 조회 중...</td>
               <td></td>`;
+          } else if (isHosted && !(r && r.error)) {
+            // r이 아예 없음(tickers.json 미등록) — 자동 등록 요청(둘 다 이 경로: KR엔 실시간
+            // 조회 API가 없고, US도 웹호스팅에서는 로컬 프록시를 못 쓰므로 동일하게 처리).
+            const reg = hostedRegister[h.ticker];
+            tr.innerHTML = `
+              <td>${h.ticker}</td>${nameCell}${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td>
+              <td colspan="8" class="no-data">지표 없음 — ${reg ? reg.message : "자동 등록 요청 중..."}</td>
+              <td></td>`;
+            ensureHostedRegistration(h.ticker, h.market);
           } else if (h.market === "us") {
             const reason = r ? r.error : "실시간 조회 대기 중";
             tr.innerHTML = `
@@ -1307,6 +1317,55 @@
       } catch (e) {
         status.textContent = "GitHub API 호출 실패: " + e.message;
       }
+    }
+
+    // 웹호스팅에서 보유종목에 신규 티커를 추가했을 때: tickers.json에 없는 티커는 브라우저가
+    // 직접 추가할 방법이 없으므로(정적 파일), update.yml(workflow_dispatch)을 add_kr/add_us
+    // 입력과 함께 트리거한다 — 워크플로우가 tickers.json에 티커를 추가하고 파이프라인을 돌린 뒤
+    // 커밋/배포한다. 세션당 티커 1회만 요청(hostedRegister가 가드).
+    async function ensureHostedRegistration(ticker, market) {
+      if (hostedRegister[ticker]) return;
+      hostedRegister[ticker] = { message: "자동 등록 요청 중..." };
+
+      let token = localStorage.getItem(GH_TOKEN_KEY);
+      if (!token) {
+        token = prompt(
+          "신규 종목을 자동 등록하려면 1회 GitHub 토큰이 필요합니다.\n\n" +
+          "github.com → Settings → Developer settings → Fine-grained tokens에서\n" +
+          `"${GH_REPO}" 저장소 하나만 골라 Actions 권한을 Read and write로 설정한 토큰을 발급받아 붙여넣어 주세요.\n\n` +
+          "이 브라우저에만 저장되며 GitHub API 외에는 전송되지 않습니다."
+        );
+        if (!token) {
+          hostedRegister[ticker] = { message: "토큰 입력이 취소돼 등록되지 않음 — 새로고침 후 다시 시도하세요" };
+          renderHoldingsTab();
+          return;
+        }
+        token = token.trim();
+        localStorage.setItem(GH_TOKEN_KEY, token);
+      }
+
+      try {
+        const inputs = market === "kr" ? { add_kr: ticker } : { add_us: ticker };
+        const res = await fetch(
+          `https://api.github.com/repos/${GH_REPO}/actions/workflows/update.yml/dispatches`,
+          {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}`, "Accept": "application/vnd.github+json" },
+            body: JSON.stringify({ ref: "main", inputs }),
+          }
+        );
+        if (res.status === 204) {
+          hostedRegister[ticker] = { message: "등록 요청됨 — 약 5분 후 새로고침해 확인하세요" };
+        } else if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem(GH_TOKEN_KEY);
+          hostedRegister[ticker] = { message: "토큰이 유효하지 않음 — 새로고침 후 다시 시도하세요" };
+        } else {
+          hostedRegister[ticker] = { message: `등록 요청 실패 (HTTP ${res.status})` };
+        }
+      } catch (e) {
+        hostedRegister[ticker] = { message: "GitHub API 호출 실패: " + e.message };
+      }
+      renderHoldingsTab();
     }
 
     document.getElementById("discoverStartBtn").addEventListener("click", async () => {
