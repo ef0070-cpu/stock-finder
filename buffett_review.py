@@ -8,6 +8,31 @@ from typing import Optional
 
 MODEL = "claude-sonnet-5"
 
+# ponytail: 2026-08-31까지 적용되는 sonnet-5 프로모션 단가($2/$10). 그 이후엔 정가($3/$15)로
+# 바뀌므로 실비용이 아래 계산과 달라질 수 있음 — 그때 가서 상수만 갱신하면 됨.
+_PRICE_INPUT_PER_MTOK = 2.00
+_PRICE_OUTPUT_PER_MTOK = 10.00
+_PRICE_PER_WEB_SEARCH = 0.01  # $10 / 1,000회
+
+
+def _log_cost(ticker: str, response) -> None:
+    usage = response.usage
+    search_count = sum(
+        1 for b in response.content
+        if getattr(b, "type", None) == "server_tool_use" and getattr(b, "name", None) == "web_search"
+    )
+    input_cost = usage.input_tokens / 1_000_000 * _PRICE_INPUT_PER_MTOK
+    output_cost = usage.output_tokens / 1_000_000 * _PRICE_OUTPUT_PER_MTOK
+    search_cost = search_count * _PRICE_PER_WEB_SEARCH
+    cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+    print(
+        f"  [{ticker}] 비용: 입력 {usage.input_tokens}tok(${input_cost:.4f}) + "
+        f"출력 {usage.output_tokens}tok(${output_cost:.4f}) + "
+        f"웹검색 {search_count}회(${search_cost:.4f})"
+        + (f" + 캐시읽음 {cache_read}tok" if cache_read else "")
+        + f" = ${input_cost + output_cost + search_cost:.4f}"
+    )
+
 SYSTEM_PROMPT = """너는 워런 버핏 스타일의 가치투자 심사역이야. 종목 하나를 깊이 있게 검토해서
 ①좋은 기업인가(경쟁우위·해자, 꾸준한 수익, 재무 건전성, 주주 친화적 경영, 이해하기 쉬운 사업)
 ②지금 가격이 적당한가(밸류에이션)를 판정하고, 초보 투자자도 이해할 수 있는 실행 조언까지 제시해.
@@ -160,6 +185,7 @@ def generate_review(name: str, ticker: str, market: str, price: float, rsi: floa
             tools=[{"type": "web_search_20260209", "name": "web_search", "max_uses": 6}],
             messages=[{"role": "user", "content": _build_user_message(name, ticker, market, price, per, dividend_yield)}],
         )
+        _log_cost(ticker, response)
         text = "".join(block.text for block in response.content if block.type == "text")
         parsed = _parse_response(text, rsi)
         if parsed is None:
