@@ -155,7 +155,7 @@ def generate_review(name: str, ticker: str, market: str, price: float, rsi: floa
         client = anthropic.Anthropic(api_key=api_key)
         response = client.messages.create(
             model=MODEL,
-            max_tokens=3072,
+            max_tokens=8192,
             system=SYSTEM_PROMPT,
             tools=[{"type": "web_search_20260209", "name": "web_search", "max_uses": 6}],
             messages=[{"role": "user", "content": _build_user_message(name, ticker, market, price, per, dividend_yield)}],

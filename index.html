@@ -379,9 +379,10 @@
   <script src="candidates.js"></script>
   <script>
     const STOCK_DATA = window.STOCK_DATA || { updated_at: "데이터 없음 (run_pipeline.bat 먼저 실행)", results: {} };
-    // 종목 파인더 데이터(discover.py 산출물) — REJECT(버핏 기준 미달)는 검색 대상에서 제외
+    // 종목 파인더 데이터(discover.py 산출물) — 3~4단계(버핏 리뷰)를 거치지 못했거나
+    // REJECT(버핏 기준 미달) 판정인 종목은 검색/카드 대상에서 제외
     const CANDIDATES_DATA = window.CANDIDATES_DATA || { generated_at: "데이터 없음 (discover.py 먼저 실행)", candidates: [] };
-    const SEARCHABLE_CANDIDATES = CANDIDATES_DATA.candidates.filter((c) => c.warren_score?.verdict !== "REJECT");
+    const SEARCHABLE_CANDIDATES = CANDIDATES_DATA.candidates.filter((c) => c.warren_score && c.warren_score.verdict !== "REJECT");
     const HOLDINGS_KEY = "stock_app_holdings";
 
     function escapeHtml(s) {
