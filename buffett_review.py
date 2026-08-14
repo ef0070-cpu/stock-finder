@@ -49,7 +49,6 @@ SYSTEM_PROMPT = """너는 워런 버핏 스타일의 가치투자 심사역이�
 - 주주친화: [✅ 또는 ⚠️ 또는 ❌] [한 문장 설명]
 - 이해용이성: [✅ 또는 ⚠️ 또는 ❌] [한 문장 설명]
 밸류에이션: [PER/PBR 등 근거를 포함한 설명]
-4단계점수: PER [0~10 숫자]/10, PBR [0~10 숫자]/10, ROE [0~10 숫자]/10, 재무안정성 [0~10 숫자]/10
 매수이유:
 1. [이유]
 2. [이유]
@@ -126,15 +125,12 @@ def _parse_response(text: str, rsi: float) -> Optional[dict]:
 
     checklist = _extract_checklist(text)
     valuation = _extract(r"밸류에이션:\s*(.+)", text)
-    score_m = re.search(
-        r"4단계점수:\s*PER\s*\[?([\d.]+)\]?/10,?\s*PBR\s*\[?([\d.]+)\]?/10,?\s*ROE\s*\[?([\d.]+)\]?/10,?\s*재무안정성\s*\[?([\d.]+)\]?/10", text
-    )
     buy_reasons = _extract_numbered_list(text, "매수이유")
     risk_reasons = _extract_numbered_list(text, "리스크이유")
     beginner_advice = _extract(r"초보자조언:\s*(.+)", text)
     summary = _extract(r"한줄총평:\s*(.+)", text)
 
-    if not all([checklist, valuation, score_m, buy_reasons, risk_reasons, beginner_advice, summary]):
+    if not all([checklist, valuation, buy_reasons, risk_reasons, beginner_advice, summary]):
         return None
 
     return {
@@ -152,12 +148,6 @@ def _parse_response(text: str, rsi: float) -> Optional[dict]:
             "checklist": checklist,
             "valuation": valuation,
             "stage4": {
-                "score": {
-                    "per": float(score_m.group(1)),
-                    "pbr": float(score_m.group(2)),
-                    "roe": float(score_m.group(3)),
-                    "financial_health": float(score_m.group(4)),
-                },
                 "buy_reasons": buy_reasons,
                 "risk_reasons": risk_reasons,
                 "beginner_advice": beginner_advice,
@@ -206,7 +196,6 @@ if __name__ == "__main__":
 - 주주친화: ✅ 배당 개시 + 자사주 매입
 - 이해용이성: ✅ 광고·클라우드 구독 수익
 밸류에이션: PER 17.6~19배로 5년 평균 대비 할인
-4단계점수: PER 8/10, PBR 5/10, ROE 9/10, 재무안정성 8/10
 매수이유:
 1. PER 할인
 2. ROE 우수
@@ -223,7 +212,6 @@ if __name__ == "__main__":
     assert parsed["warren_score"]["total"] == 7.6
     assert len(parsed["buffett_review"]["checklist"]) == 5
     assert len(parsed["buffett_review"]["stage4"]["buy_reasons"]) == 3
-    assert parsed["buffett_review"]["stage4"]["score"]["per"] == 8.0
 
     assert _parse_response("형식이 전혀 다른 응답", rsi=50) is None, "잘못된 형식인데 파싱이 성공함"
 

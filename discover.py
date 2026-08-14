@@ -279,7 +279,6 @@ def write_report(candidates: list[dict], date: str) -> None:
             market_label = "국내" if c["market"] == "kr" else "미국"
             review = c["buffett_review"]
             checklist = review["checklist"]
-            score = review["stage4"]["score"]
             md.append("---")
             md.append("")
             md.append(f"## {c['ticker']} · {c['name']} ({market_label})")
@@ -289,11 +288,6 @@ def write_report(candidates: list[dict], date: str) -> None:
                 md.append(f"- {label} {checklist[key]}")
             md.append("")
             md.append(f"**밸류에이션**: {review['valuation']}")
-            md.append("")
-            md.append(
-                f"**4단계 점수**: PER {score['per']}/10, PBR {score['pbr']}/10, "
-                f"ROE {score['roe']}/10, 재무안정성 {score['financial_health']}/10"
-            )
             md.append("")
             md.append("**매수 이유**")
             md.append(_numbered(review["stage4"]["buy_reasons"]))
