@@ -94,7 +94,7 @@ def _parse_response(text: str, rsi: float) -> Optional[dict]:
         return None
 
     warren_m = re.search(
-        r"워런점수:\s*재무\s*([\d.]+),?\s*기술\s*([\d.]+),?\s*타이밍\s*([\d.]+),?\s*종합\s*([\d.]+)", text
+        r"워런점수:\s*재무\s*\[?([\d.]+)\]?,?\s*기술\s*\[?([\d.]+)\]?,?\s*타이밍\s*\[?([\d.]+)\]?,?\s*종합\s*\[?([\d.]+)\]?", text
     )
     if not warren_m:
         return None
@@ -102,7 +102,7 @@ def _parse_response(text: str, rsi: float) -> Optional[dict]:
     checklist = _extract_checklist(text)
     valuation = _extract(r"밸류에이션:\s*(.+)", text)
     score_m = re.search(
-        r"4단계점수:\s*PER\s*([\d.]+)/10,?\s*PBR\s*([\d.]+)/10,?\s*ROE\s*([\d.]+)/10,?\s*재무안정성\s*([\d.]+)/10", text
+        r"4단계점수:\s*PER\s*\[?([\d.]+)\]?/10,?\s*PBR\s*\[?([\d.]+)\]?/10,?\s*ROE\s*\[?([\d.]+)\]?/10,?\s*재무안정성\s*\[?([\d.]+)\]?/10", text
     )
     buy_reasons = _extract_numbered_list(text, "매수이유")
     risk_reasons = _extract_numbered_list(text, "리스크이유")
@@ -200,5 +200,10 @@ if __name__ == "__main__":
     assert parsed["buffett_review"]["stage4"]["score"]["per"] == 8.0
 
     assert _parse_response("형식이 전혀 다른 응답", rsi=50) is None, "잘못된 형식인데 파싱이 성공함"
+
+    bracketed = sample.replace("재무 6.2, 기술 8.8, 타이밍 7.7, 종합 7.6", "재무 [6.2], 기술 [8.8], 타이밍 [7.7], 종합 [7.6]")
+    parsed_bracketed = _parse_response(bracketed, rsi=54.2)
+    assert parsed_bracketed is not None, "숫자가 [ ]로 감싸진 응답(플레이스홀더 그대로 남긴 케이스) 파싱 실패"
+    assert parsed_bracketed["warren_score"]["total"] == 7.6
 
     print("buffett_review.py self-check 통과")
