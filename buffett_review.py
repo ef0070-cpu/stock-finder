@@ -6,7 +6,7 @@ import os
 import re
 from typing import Optional
 
-MODEL = "claude-opus-5"
+MODEL = "claude-sonnet-5"
 
 SYSTEM_PROMPT = """너는 워런 버핏 스타일의 가치투자 심사역이야. 종목 하나를 깊이 있게 검토해서
 ①좋은 기업인가(경쟁우위·해자, 꾸준한 수익, 재무 건전성, 주주 친화적 경영, 이해하기 쉬운 사업)

@@ -7,7 +7,7 @@ from typing import Optional
 
 from indicators import score_and_opinion
 
-MODEL = "claude-opus-5"
+MODEL = "claude-sonnet-5"
 
 SYSTEM_PROMPT = """너는 주식 초보자에게 친절하고 명확하게 투자 정보를 설명해주는 AI 애널리스트야.
 제공된 주식 데이터(실적, 목표가, 차트 지표 등)를 종합적으로 분석하되, 절대로 길고 복잡한
