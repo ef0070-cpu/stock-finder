@@ -98,6 +98,12 @@
   }
   .cal-header button#discoverStartBtn:hover { background: var(--primary-hover); color: #fff; }
   .cal-header button#discoverStartBtn:disabled { opacity: 0.6; cursor: default; }
+  .btn-spinner {
+    display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px;
+    border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%;
+    animation: btn-spin 0.6s linear infinite;
+  }
+  @keyframes btn-spin { to { transform: rotate(360deg); } }
   #discoverStatus { font-size: 12px; color: var(--text-muted); font-weight: 400; }
   .cal-grid {
     display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
@@ -1374,27 +1380,31 @@
       const krCount = document.getElementById("discoverKrCount").value;
       const usCount = document.getElementById("discoverUsCount").value;
       btn.disabled = true;
+      btn.innerHTML = '<span class="btn-spinner"></span>발굴 중...';
 
-      if (isHosted) {
-        await runDiscoverHosted(status, krCount, usCount);
-        btn.disabled = false;
-        return;
-      }
-
-      status.textContent = "시작하는 중...";
       try {
-        const res = await fetch(`http://127.0.0.1:8765/discover?kr=${krCount}&us=${usCount}`);
-        const json = await res.json();
-        if (json.status === "already_running") {
-          status.textContent = "이미 실행 중입니다.";
-        } else {
-          status.textContent = "실행 중 — 진행상황 창을 확인하세요.";
+        if (isHosted) {
+          await runDiscoverHosted(status, krCount, usCount);
+          return;
         }
-        window.open("http://127.0.0.1:8765/discover_progress.html", "_blank");
-      } catch (e) {
-        status.textContent = "로컬 서버에 연결할 수 없습니다 — run_pipeline.bat을 먼저 실행해 두세요.";
+
+        status.textContent = "시작하는 중...";
+        try {
+          const res = await fetch(`http://127.0.0.1:8765/discover?kr=${krCount}&us=${usCount}`);
+          const json = await res.json();
+          if (json.status === "already_running") {
+            status.textContent = "이미 실행 중입니다.";
+          } else {
+            status.textContent = "실행 중 — 진행상황 창을 확인하세요.";
+          }
+          window.open("http://127.0.0.1:8765/discover_progress.html", "_blank");
+        } catch (e) {
+          status.textContent = "로컬 서버에 연결할 수 없습니다 — run_pipeline.bat을 먼저 실행해 두세요.";
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "종목 발굴 시작";
       }
-      btn.disabled = false;
     });
 
     function renderFinderCards() {
@@ -1562,14 +1572,20 @@
       btn.disabled = false;
     });
 
+    // 업데이트 버튼이 location.reload()를 쓰므로, 새로고침해도 보던 탭 그대로 유지되도록
+    // 마지막으로 클릭한 탭을 저장해뒀다가 로드 시 복원한다.
+    const ACTIVE_TAB_KEY = "stock_app_active_tab";
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
         document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
         btn.classList.add("active");
         document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+        localStorage.setItem(ACTIVE_TAB_KEY, btn.dataset.tab);
       });
     });
+    const savedTabBtn = document.querySelector(`.tab-btn[data-tab="${localStorage.getItem(ACTIVE_TAB_KEY)}"]`);
+    if (savedTabBtn) savedTabBtn.click();
 
     renderUpdatedAt();
     populateTickerSuggestions();
