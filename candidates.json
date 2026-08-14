@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-08-14 04:25:28",
+  "generated_at": "2026-08-14 05:02:06",
   "candidates": [
     {
       "market": "kr",
       "ticker": "005930",
       "name": "삼성전자",
-      "price": 270250.0,
-      "change_pct": 0.84,
+      "price": 271500.0,
+      "change_pct": 1.31,
       "score": 2,
       "opinion": "매수",
-      "comment": "RSI 54.3 중립, 골든크로스, MACD 상승전환 → 매수 우위",
-      "rsi": 54.3,
-      "ma5": 252650.0,
-      "ma20": 244262.5,
+      "comment": "RSI 54.6 중립, 골든크로스, MACD 상승전환 → 매수 우위",
+      "rsi": 54.6,
+      "ma5": 252900.0,
+      "ma20": 244325.0,
       "per": null,
       "dividend_yield": null,
       "tags": []
