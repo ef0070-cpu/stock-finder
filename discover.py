@@ -354,6 +354,8 @@ def main() -> None:
             "ma5": result["ma5"],
             "ma20": result["ma20"],
         }
+        if "supply_demand" in result:
+            entry["supply_demand"] = result["supply_demand"]
         analyzed.append(entry)
         progress["analyzed"] += 1
         if entry["opinion"] == "매수":

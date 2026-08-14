@@ -7,7 +7,14 @@ import pandas as pd
 import yfinance as yf
 from pykrx import stock as pykrx_stock
 
-from indicators import compute_bollinger, compute_macd, compute_ma, compute_rsi, compute_stochastic
+from indicators import (
+    analyze_supply_demand,
+    compute_bollinger,
+    compute_macd,
+    compute_ma,
+    compute_rsi,
+    compute_stochastic,
+)
 from llm_opinion import generate_opinion, quant_fallback
 
 TICKERS_FILE = "tickers.json"
@@ -92,6 +99,14 @@ def analyze_ticker(market: str, ticker: str, use_llm: bool = True) -> dict:
             if yf_name:
                 name = yf_name
                 result["name"] = name
+        except Exception:
+            pass
+
+    if market == "kr":
+        try:
+            supply_demand = analyze_supply_demand(ticker)
+            if supply_demand is not None:
+                result["supply_demand"] = supply_demand
         except Exception:
             pass
 

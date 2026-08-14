@@ -1175,6 +1175,10 @@
           const commentText = displayOpinion !== r.opinion
             ? `매입가 대비 ${displayOpinion === "매도의견" ? `손절선(${pctVsBuy(lv.stopLoss, h.buyPrice)}) 도달` : `목표가(${pctVsBuy(lv.target, h.buyPrice)}) 도달`} · 기술적 지표는 참고: ${r.comment}`
             : r.comment;
+          // 수급 코멘트는 pykrx 기반이라 국내 종목에만 존재한다.
+          const supplyDemandHtml = (h.market === "kr" && r.supply_demand)
+            ? `<br><span style="color:var(--text-muted);font-size:12px">[수급] ${escapeHtml(r.supply_demand.foreign_comment)} ${escapeHtml(r.supply_demand.institution_comment)} ${escapeHtml(r.supply_demand.summary)}</span>`
+            : "";
           tr.innerHTML = `
             <td>${h.ticker}</td>${nameCell}${brokerCell}<td>${buyPriceKrw}</td><td>${h.quantity.toLocaleString("ko-KR")}</td><td>${formatPrice(h.market, r.price)}</td>
             <td class="${pnlClass}">${formatPrice(h.market, pnl)}</td>
@@ -1183,7 +1187,7 @@
             <td title="매입가 대비 ${pctVsBuy(lv.buyLow, h.buyPrice)}~${pctVsBuy(lv.buyHigh, h.buyPrice)} 구간 - 참고용, 투자 조언 아님">${formatPrice(h.market, lv.buyLow)} ~ ${formatPrice(h.market, lv.buyHigh)}</td>
             <td title="매입가 대비 ${pctVsBuy(lv.stopLoss, h.buyPrice)} - 현재가가 이 아래로 오면 '매도의견'으로 표시됨">${formatPrice(h.market, lv.stopLoss)}</td>
             <td title="매입가 대비 ${pctVsBuy(lv.target, h.buyPrice)} - 현재가가 이 위로 오면 '익절의견'으로 표시됨">${formatPrice(h.market, lv.target)}</td>
-            <td style="text-align:left">${commentText}</td>
+            <td style="text-align:left">${commentText}${supplyDemandHtml}</td>
             <td></td>`;
           tr.querySelector(".opinion").addEventListener("click", () => {
             openOpinionModal(name, h.ticker, h, r, lv, displayOpinion);
@@ -1432,6 +1436,11 @@
         const summary = c.buffett_review?.stage4?.summary || c.buffett_review?.stage3_conclusion || c.comment;
         const financeDetail = c.buffett_review?.checklist?.moat || c.buffett_review?.valuation || "";
         const lv = priceLevels(c.price, c);
+        // 수급 코멘트는 pykrx 기반이라 국내 종목에만 존재한다.
+        const supplyDemandHtml = (c.market === "kr" && c.supply_demand)
+          ? `<div class="stock-card-detail-title">수급 코멘트</div>
+             <div class="stock-card-detail-body">${escapeHtml(c.supply_demand.foreign_comment)} ${escapeHtml(c.supply_demand.institution_comment)}<br>${escapeHtml(c.supply_demand.summary)}</div>`
+          : "";
 
         const card = document.createElement("div");
         card.className = "stock-card";
@@ -1457,6 +1466,7 @@
               <div class="stock-card-detail-body">${escapeHtml(c.comment || "")}</div>
             </div>
           </div>
+          ${supplyDemandHtml}
           <div class="stock-card-levels">
             <div><div class="label">매수</div><div class="value">${formatPrice(c.market, lv.buyLow)} ~ ${formatPrice(c.market, lv.buyHigh)}</div></div>
             <div><div class="label">손절</div><div class="value">${formatPrice(c.market, lv.stopLoss)}</div></div>
