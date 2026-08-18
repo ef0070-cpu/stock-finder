@@ -41,6 +41,7 @@
   }
   h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4px; }
   .updated-at { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+  .holdings-updated-at { text-align: right; color: var(--text-muted); font-size: 12px; margin-top: 8px; }
   .updated-at button#updateBtn {
     padding: 6px 14px; border: none; border-radius: var(--radius-sm);
     background: var(--primary); color: #fff; font-weight: 600; font-size: 13px;
@@ -308,6 +309,7 @@
       </thead>
       <tbody></tbody>
     </table>
+    <div id="holdingsUpdatedAt" class="holdings-updated-at"></div>
   </div>
 
   <div class="tab-panel" id="panel-trades">
@@ -809,6 +811,8 @@
     function renderUpdatedAt() {
       document.getElementById("updatedAt").textContent =
         "마지막 업데이트: " + STOCK_DATA.updated_at;
+      document.getElementById("holdingsUpdatedAt").textContent =
+        "업데이트일: " + STOCK_DATA.updated_at;
       if (isHosted) {
         const btn = document.getElementById("updateBtn");
         btn.textContent = "새로고침";
